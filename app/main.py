@@ -5,10 +5,10 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
+from fastapi.responses import JSONResponse
+from jinja2 import Environment, FileSystemLoader, BaseLoader
 from loguru import logger
 from pathlib import Path
-import traceback
 import uvicorn
 
 from app.config import settings
@@ -33,7 +33,14 @@ app.add_middleware(
 )
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# Fix for Python 3.14 + Jinja2 cache bug — disable cache
+jinja_env = Environment(
+    loader=FileSystemLoader(str(BASE_DIR / "templates")),
+    cache_size=0,  # Disable cache entirely
+    auto_reload=True
+)
+templates = Jinja2Templates(env=jinja_env)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
@@ -59,15 +66,7 @@ async def health_check():
 
 @app.get("/")
 async def root(request: Request):
-    try:
-        return templates.TemplateResponse("dashboard.html", {"request": request})
-    except Exception as e:
-        tb = traceback.format_exc()
-        logger.error(f"Root route full traceback:\n{tb}")
-        return JSONResponse(
-            status_code=500,
-            content={"detail": str(e), "type": type(e).__name__, "traceback": tb}
-        )
+    return templates.TemplateResponse("dashboard.html", {"request": request})
 
 
 if __name__ == "__main__":
