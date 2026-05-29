@@ -124,13 +124,13 @@ input,select,textarea,button{font-family:inherit;font-size:13px}
 .section-hdr span{font-size:.68rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
 
 /* ── OPERATION PANELS ─────────────────────────────────────────────────────── */
-.ops-tabs{display:flex;gap:6px;margin:14px 0 10px;flex-wrap:wrap}
-.ops-tab-btn{padding:5px 12px;border-radius:20px;font-size:.75rem;font-weight:600;border:1px solid var(--border);cursor:pointer;background:#f4f6f9;color:var(--text2);transition:all .15s}
-.ops-tab-btn:hover:not(:disabled){border-color:var(--accent);color:var(--accent);background:#eef5fd}
+.ops-tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0 10px;width:100%}
+.ops-tab-btn{padding:8px 4px;border-radius:6px;font-size:.65rem;font-weight:600;border:1px solid var(--border);cursor:pointer;background:#f4f6f9;color:var(--text2);transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:3px;min-height:60px;justify-content:center;text-align:center;line-height:1.2}
+.ops-tab-btn:hover:not(:disabled){border-color:var(--accent);background:#eef5fd;transform:translateY(-1px)}
 .ops-tab-btn.op-active{background:var(--accent);color:#fff;border-color:var(--accent)}
 .ops-tab-btn:disabled{opacity:.3;cursor:not-allowed}
 .ops-tab-btn.op-transfer{border-color:#7c3aed;color:#7c3aed}
-.ops-tab-btn.op-transfer.op-active{background:#7c3aed;color:#fff}
+.ops-tab-btn.op-transfer.op-active{background:#7c3aed;color:#fff;border-color:#7c3aed}
 
 /* Operation form */
 .op-form{display:none;margin-top:10px;padding:14px;background:#f8f9fb;border-radius:8px;border:1px solid var(--border)}
