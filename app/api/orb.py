@@ -247,6 +247,7 @@ async def create_part1_entry(
         officer_id=data.officer_id,
         created_by=str(current_user.id),
         operation_code=op_code,
+        operation_type=data.operation_type,
         operation_date=op_date,
         ship_status=data.ship_status,
         position_lat=data.position_lat,

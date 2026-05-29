@@ -701,9 +701,9 @@ function showSetupSection(name){
   ['vessel','users','tanks','alarms','system','audit'].forEach(s=>{
     const el=document.getElementById(`setup-${s}`);if(el)el.style.display=s===name?'block':'none';
   });
-  document.querySelectorAll('.setup-nav-item').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.setup-tab-btn').forEach(el=>el.classList.remove('active'));
   const idx={vessel:0,users:1,tanks:2,alarms:3,system:4,audit:5}[name]??0;
-  document.querySelectorAll('.setup-nav-item')[idx]?.classList.add('active');
+  document.querySelectorAll('.setup-tab-btn')[idx]?.classList.add('active');
   if(name==='vessel')loadSetupVessel();
   if(name==='users')loadSetupUsers();
   if(name==='tanks')loadSetupTanks();

@@ -287,23 +287,21 @@
 
     <!-- ══ SETUP TAB ══════════════════════════════════════════════════════════ -->
     <div id="tab-setup" class="tab-content" style="display:none">
-      <div class="setup-layout">
-        <div class="setup-sidebar">
-          <div class="setup-nav-item active" onclick="showSetupSection('vessel')">&#9875; Vessel</div>
-          <div class="setup-nav-item" onclick="showSetupSection('users')">&#128100; Users &amp; Crew</div>
-          <div class="setup-nav-item" onclick="showSetupSection('tanks')">&#128674; Tanks</div>
-          <div class="setup-nav-item" onclick="showSetupSection('alarms')">&#128276; Par Levels &amp; Alarms</div>
-          <div class="setup-nav-item" onclick="showSetupSection('system')">&#9881; System &amp; Mode</div>
-          <div class="setup-nav-item" onclick="showSetupSection('audit')">&#128269; Audit Log</div>
-        </div>
-        <div class="setup-main">
-          <div id="setup-vessel"></div>
-          <div id="setup-users"  style="display:none"></div>
-          <div id="setup-tanks"  style="display:none"></div>
-          <div id="setup-alarms" style="display:none"></div>
-          <div id="setup-system" style="display:none"></div>
-          <div id="setup-audit"  style="display:none"></div>
-        </div>
+      <div class="setup-tabs">
+        <button class="setup-tab-btn active" onclick="showSetupSection('vessel')">&#9875; Vessel Particulars</button>
+        <button class="setup-tab-btn" onclick="showSetupSection('users')">&#128100; Users &amp; Crew</button>
+        <button class="setup-tab-btn" onclick="showSetupSection('tanks')">&#128674; Tank Configuration</button>
+        <button class="setup-tab-btn" onclick="showSetupSection('alarms')">&#128276; Par Levels</button>
+        <button class="setup-tab-btn" onclick="showSetupSection('system')">&#9881; System &amp; License</button>
+        <button class="setup-tab-btn" onclick="showSetupSection('audit')">&#128269; Audit Log</button>
+      </div>
+      <div class="setup-main">
+        <div id="setup-vessel"></div>
+        <div id="setup-users"  style="display:none"></div>
+        <div id="setup-tanks"  style="display:none"></div>
+        <div id="setup-alarms" style="display:none"></div>
+        <div id="setup-system" style="display:none"></div>
+        <div id="setup-audit"  style="display:none"></div>
       </div>
     </div>
 
