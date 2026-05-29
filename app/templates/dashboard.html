@@ -3,93 +3,122 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyORB</title>
+    <title>PyORB - Oil Record Book System</title>
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
-    <div id="login-screen" class="login-screen">
-        <div class="login-box">
-            <div class="login-logo">&#9875;</div>
-            <h1>PyORB</h1>
-            <p class="login-subtitle">Oil Record Book System</p>
-            <p class="marpol-badge">MARPOL Annex I Compliant</p>
-            <div id="login-error" class="error-msg" style="display:none"></div>
-            <div class="form-group">
-                <label>Username</label>
-                <input type="text" id="username" placeholder="Enter username">
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" id="password" placeholder="Enter password">
-            </div>
-            <button class="btn btn-full" onclick="login()">Login</button>
-            <p class="login-hint">Default: admin / admin123</p>
+
+<!-- LOGIN -->
+<div id="login-screen" class="login-screen">
+    <div class="login-box">
+        <div class="login-logo">&#9875;</div>
+        <h1>PyORB</h1>
+        <p class="login-subtitle">Oil Record Book System</p>
+        <p class="marpol-badge">MARPOL Annex I Compliant</p>
+        <div id="login-error" class="alert alert-error" style="display:none"></div>
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" id="username" placeholder="Enter username" autocomplete="username">
         </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+        </div>
+        <button class="btn btn-full" onclick="login()">Login</button>
+        <p class="login-hint">Default: admin / admin123</p>
     </div>
+</div>
 
-    <div id="app" style="display:none">
-        <nav class="navbar">
-            <div class="nav-brand">PyORB</div>
-            <div class="nav-links">
-                <a href="#" onclick="showSection('dashboard')">Dashboard</a>
-                <a href="#" onclick="showSection('vessel')">Vessel</a>
-                <a href="#" onclick="showSection('users')">Users</a>
-                <a href="#" onclick="showSection('tanks')">Tanks</a>
-                <a href="/api/docs" target="_blank">API Docs</a>
-            </div>
-            <div class="nav-user">
-                <span id="nav-username"></span>
-                <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
-            </div>
-        </nav>
+<!-- APP -->
+<div id="app" style="display:none">
+    <nav class="navbar">
+        <div class="nav-brand">&#9875; PyORB</div>
+        <div class="nav-links">
+            <a href="#" data-section="dashboard" onclick="showSection('dashboard')">Dashboard</a>
+            <a href="#" data-section="vessel"    onclick="showSection('vessel')">Vessel</a>
+            <a href="#" data-section="users"     onclick="showSection('users')">Users</a>
+            <a href="#" data-section="tanks"     onclick="showSection('tanks')">Tanks</a>
+            <a href="/api/docs" target="_blank">API Docs</a>
+        </div>
+        <div class="nav-user">
+            <span id="nav-username"></span>
+            <span id="nav-role" class="role-badge"></span>
+            <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+        </div>
+    </nav>
 
-        <main class="container">
-            <div id="section-dashboard">
+    <main class="container">
+
+        <!-- DASHBOARD -->
+        <div id="section-dashboard">
+            <div class="page-header">
                 <h1>Dashboard</h1>
-                <p class="subtitle">MARPOL Annex I Compliant Record Management</p>
-                <div id="vessel-summary" class="vessel-banner"></div>
-                <div class="cards">
-                    <div class="card card-blue">
-                        <h3>ORB Part I</h3>
-                        <p>Machinery Space Operations</p>
-                        <small>Codes A to I</small>
-                    </div>
-                    <div class="card card-green">
-                        <h3>ORB Part II</h3>
-                        <p>Cargo and Ballast Operations</p>
-                        <small>Codes A to G</small>
-                    </div>
-                    <div class="card card-orange">
-                        <h3>Reports</h3>
-                        <p>Export and Statistics</p>
-                        <small>PDF, Excel, CSV</small>
-                    </div>
-                    <div class="card card-red">
-                        <h3>Audit Log</h3>
-                        <p>Full Operation History</p>
-                        <small>Complete trail</small>
-                    </div>
+                <p class="subtitle">MARPOL Annex I Compliant Oil Record Book</p>
+            </div>
+            <div id="vessel-summary" class="vessel-banner"></div>
+            <div id="dash-stats" class="stats-row"></div>
+            <div class="cards">
+                <div class="card card-blue">
+                    <div class="card-icon">&#128203;</div>
+                    <h3>ORB Part I</h3>
+                    <p>Machinery Space Operations</p>
+                    <small>Codes A through I</small>
+                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+                </div>
+                <div class="card card-green">
+                    <div class="card-icon">&#128674;</div>
+                    <h3>ORB Part II</h3>
+                    <p>Cargo and Ballast Operations</p>
+                    <small>Codes A through G</small>
+                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+                </div>
+                <div class="card card-orange">
+                    <div class="card-icon">&#128202;</div>
+                    <h3>Reports</h3>
+                    <p>Export and Statistics</p>
+                    <small>PDF, Excel, CSV</small>
+                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+                </div>
+                <div class="card card-red">
+                    <div class="card-icon">&#128269;</div>
+                    <h3>Audit Log</h3>
+                    <p>Full Operation History</p>
+                    <small>Complete investigation trail</small>
+                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
                 </div>
             </div>
+        </div>
 
-            <div id="section-vessel" style="display:none">
+        <!-- VESSEL -->
+        <div id="section-vessel" style="display:none">
+            <div class="page-header">
                 <h1>Vessel Setup</h1>
-                <div id="vessel-form-container"></div>
+                <p class="subtitle">Configure vessel particulars and ORB mode</p>
             </div>
+            <div id="vessel-form-container"></div>
+        </div>
 
-            <div id="section-users" style="display:none">
+        <!-- USERS -->
+        <div id="section-users" style="display:none">
+            <div class="page-header">
                 <h1>User Management</h1>
-                <button class="btn mb" onclick="showAddUser()">Add User</button>
-                <div id="users-list"></div>
+                <p class="subtitle">Manage crew members and access roles</p>
             </div>
+            <div id="users-container"></div>
+        </div>
 
-            <div id="section-tanks" style="display:none">
+        <!-- TANKS -->
+        <div id="section-tanks" style="display:none">
+            <div class="page-header">
                 <h1>Tank Management</h1>
-                <button class="btn mb" onclick="showAddTank()">Add Tank</button>
-                <div id="tanks-list"></div>
+                <p class="subtitle">Vessel tank inventory and specifications</p>
             </div>
-        </main>
-    </div>
-    <script src="/static/js/main.js"></script>
+            <div id="tanks-container"></div>
+        </div>
+
+    </main>
+</div>
+
+<script src="/static/js/main.js"></script>
 </body>
 </html>
