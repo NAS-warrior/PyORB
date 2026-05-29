@@ -127,7 +127,7 @@ def make_entries(vessel, tanks, users, db):
         t = hfo_tanks[0]
         e = ORBPart1Entry(
             vessel_id=vessel.id, officer_id=ce.id, created_by=ce.id,
-            operation_code=OperationCodeP1.H, operation_type="bunkering",
+            operation_code=OperationCodeP1.H, operation_type="BUNKERING",
             operation_date=base_date + timedelta(days=2),
             ship_status=ShipStatus.IN_PORT,
             port_name="Valletta, Malta",
@@ -146,7 +146,7 @@ def make_entries(vessel, tanks, users, db):
         t = bilge_tanks[0]
         e = ORBPart1Entry(
             vessel_id=vessel.id, officer_id=se.id, created_by=se.id,
-            operation_code=OperationCodeP1.E, operation_type="bilge_discharge",
+            operation_code=OperationCodeP1.E, operation_type="BILGE_DISCHARGE",
             operation_date=base_date + timedelta(days=10),
             ship_status=ShipStatus.EN_ROUTE,
             position_lat=38.1200, position_lon=15.6500, position_source="gps",
@@ -163,7 +163,7 @@ def make_entries(vessel, tanks, users, db):
         t_to = mgo_tanks[1]
         e = ORBPart1Entry(
             vessel_id=vessel.id, officer_id=ce.id, created_by=ce.id,
-            operation_code=OperationCodeP1.I, operation_type="transfer",
+            operation_code=OperationCodeP1.I, operation_type="TRANSFER",
             operation_date=base_date + timedelta(days=15),
             ship_status=ShipStatus.EN_ROUTE,
             position_lat=36.8000, position_lon=15.1000, position_source="gps",
@@ -176,7 +176,7 @@ def make_entries(vessel, tanks, users, db):
     # OWS condition check 10 days ago
     e = ORBPart1Entry(
         vessel_id=vessel.id, officer_id=ce.id, created_by=ce.id,
-        operation_code=OperationCodeP1.F, operation_type="ows_check",
+        operation_code=OperationCodeP1.F, operation_type="OWS_CONDITION",
         operation_date=base_date + timedelta(days=20),
         ship_status=ShipStatus.EN_ROUTE,
         position_lat=37.5000, position_lon=14.2000, position_source="gps",
@@ -189,7 +189,7 @@ def make_entries(vessel, tanks, users, db):
         t = bilge_tanks[0]
         e = ORBPart1Entry(
             vessel_id=vessel.id, officer_id=se.id, created_by=se.id,
-            operation_code=OperationCodeP1.D, operation_type="bilge_cleaning",
+            operation_code=OperationCodeP1.D, operation_type="BILGE_CLEANING",
             operation_date=base_date + timedelta(days=25),
             ship_status=ShipStatus.IN_PORT,
             port_name="Piraeus, Greece",
