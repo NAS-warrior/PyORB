@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     debug: bool = False
-    app_mode: AppMode = AppMode.SHIP
+    app_mode: AppMode = AppMode.SHIP  # Always default to DORB-Ship
 
     # License keys — controls which modes can be activated
     license_ship: Optional[str] = None
