@@ -1,0 +1,64 @@
+/* PyORB Main Stylesheet */
+:root {
+    --primary: #1a3a5c;
+    --accent: #2e86c1;
+    --light: #f4f6f9;
+    --text: #2c3e50;
+    --border: #dce1e7;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Segoe UI', sans-serif;
+    background: var(--light);
+    color: var(--text);
+}
+
+.navbar {
+    background: var(--primary);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.nav-brand { font-size: 1.5rem; font-weight: bold; }
+.nav-links a { color: white; text-decoration: none; margin-right: 1rem; }
+.nav-links a:hover { text-decoration: underline; }
+.nav-user { margin-left: auto; }
+
+.container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+h1 { font-size: 2rem; color: var(--primary); }
+.subtitle { color: #666; margin-bottom: 2rem; }
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.card {
+    background: white;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.card h3 { color: var(--primary); margin-bottom: 0.5rem; }
+.card p { color: #666; margin-bottom: 1rem; }
+
+.btn {
+    display: inline-block;
+    background: var(--accent);
+    color: white;
+    padding: 0.5rem 1.2rem;
+    border-radius: 4px;
+    text-decoration: none;
+    font-size: 0.9rem;
+}
+
+.btn:hover { background: var(--primary); }

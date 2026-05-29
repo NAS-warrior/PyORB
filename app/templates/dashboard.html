@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PyORB — Oil Record Book System</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">⚓ PyORB</div>
+        <div class="nav-links">
+            <a href="/setup">Setup</a>
+            <a href="/orb/part1">ORB Part I</a>
+            <a href="/orb/part2">ORB Part II</a>
+            <a href="/reports">Reports</a>
+            <a href="/audit">Audit Log</a>
+        </div>
+        <div class="nav-user">
+            <span id="current-user">Not logged in</span>
+        </div>
+    </nav>
+
+    <main class="container">
+        <h1>Oil Record Book Dashboard</h1>
+        <p class="subtitle">MARPOL Annex I Compliant Record Management</p>
+
+        <div class="cards">
+            <div class="card">
+                <h3>ORB Part I</h3>
+                <p>Machinery Space Operations</p>
+                <a href="/orb/part1" class="btn">Open</a>
+            </div>
+            <div class="card">
+                <h3>ORB Part II</h3>
+                <p>Cargo/Ballast Operations</p>
+                <a href="/orb/part2" class="btn">Open</a>
+            </div>
+            <div class="card">
+                <h3>Reports</h3>
+                <p>Export & Statistics</p>
+                <a href="/reports" class="btn">Open</a>
+            </div>
+            <div class="card">
+                <h3>Audit Log</h3>
+                <p>Full Operation History</p>
+                <a href="/audit" class="btn">Open</a>
+            </div>
+        </div>
+    </main>
+    <script src="/static/js/main.js"></script>
+</body>
+</html>

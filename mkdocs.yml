@@ -1,0 +1,29 @@
+site_name: PyORB Documentation
+site_description: Oil Record Book System - MARPOL Annex I Compliant
+site_author: NAS-warrior
+
+theme:
+  name: material
+  palette:
+    primary: blue
+    accent: cyan
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.highlight
+
+nav:
+  - Home: index.md
+  - User Guide:
+    - Getting Started: user/getting_started.md
+  - MARPOL Reference:
+    - Overview: marpol/overview.md
+  - Technical:
+    - Architecture: technical/architecture.md
+    - Database: technical/database.md
+  - Development:
+    - Changelog: development/changelog.md
+    - Roadmap: development/roadmap.md
+
+plugins:
+  - search
