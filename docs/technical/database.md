@@ -301,3 +301,71 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO pyorb_sync;
 - Every INSERT and UPDATE generates an `audit_log` entry automatically
 - `audit_log` itself has no UPDATE or DELETE permissions — append only
 - Database backups must be encrypted at rest
+
+---
+
+## Superintendent Mode — Ship Connection Tables
+
+### ship_connections
+Stores all configured connection methods per ship node.
+
+| Column | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| vessel_id | UUID | FK → vessels |
+| method | ENUM | https, vpn, ssh_tunnel, sftp, email, file_import |
+| priority | INT | Lower = tried first (1 = highest priority) |
+| is_enabled | BOOLEAN | Enable/disable without deleting |
+| endpoint_url | VARCHAR(255) | HTTPS/SFTP URL or SSH host |
+| port | INT | Connection port |
+| auth_type | ENUM | bearer_token, mtls_cert, ssh_key, gpg_key, none |
+| auth_credential | TEXT | Encrypted credential (token, key path, cert) |
+| allowed_ips | VARCHAR(500) | Comma-separated IP whitelist |
+| sync_interval_hours | INT | 0 = manual only |
+| last_attempt | TIMESTAMP | Last sync attempt |
+| last_success | TIMESTAMP | Last successful sync |
+| status | ENUM | online, offline, error, untested |
+| error_message | TEXT | Last error if status=error |
+
+### ship_public_keys
+Public key registry for verifying signed exports from each ship.
+
+| Column | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| vessel_id | UUID | FK → vessels |
+| key_type | ENUM | rsa_4096, ed25519 |
+| public_key | TEXT | PEM-encoded public key |
+| fingerprint | VARCHAR(64) | Key fingerprint for display |
+| valid_from | TIMESTAMP | Key validity start |
+| valid_to | TIMESTAMP | Key expiry (null = no expiry) |
+| is_active | BOOLEAN | Active key flag |
+| registered_by | UUID | FK → users (superintendent admin) |
+| registered_at | TIMESTAMP | Registration timestamp |
+| revoked_at | TIMESTAMP | Revocation timestamp if revoked |
+| revoke_reason | TEXT | Reason for revocation |
+
+### import_log
+Detailed log of every data import regardless of method.
+
+| Column | Type | Description |
+|---|---|---|
+| id | UUID | Primary key |
+| vessel_id | UUID | FK → vessels |
+| connection_id | UUID | FK → ship_connections |
+| method | ENUM | https, sftp, email, file_import, ssh_tunnel |
+| triggered_by | ENUM | scheduled, manual, ship_push |
+| operator_id | UUID | FK → users (who triggered manual import) |
+| file_name | VARCHAR(255) | Filename if file-based method |
+| package_hash | VARCHAR(64) | SHA-256 of received package |
+| signature_valid | BOOLEAN | Whether signature was verified |
+| records_received | INT | Total records in package |
+| records_imported | INT | Records successfully imported |
+| records_skipped | INT | Duplicates or already-existing |
+| records_rejected | INT | Failed validation |
+| date_from | DATE | Earliest record date in package |
+| date_to | DATE | Latest record date in package |
+| started_at | TIMESTAMP | Import start |
+| completed_at | TIMESTAMP | Import completion |
+| status | ENUM | success, partial, failed, rejected |
+| error_message | TEXT | Detail if failed or rejected |

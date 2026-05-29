@@ -27,6 +27,7 @@ nav:
     - System Architecture: technical/architecture.md
     - Operational Modes: technical/modes.md
     - Database Design: technical/database.md
+    - Ship-to-Superintendent Connectivity: technical/connectivity.md
     - Installation Guide: technical/installation.md
     - Security Guide: technical/security.md
   - Development:

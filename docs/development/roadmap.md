@@ -55,3 +55,22 @@
 - [ ] Fleet-wide reports and statistics
 - [ ] Superintendent-specific user roles
 - [ ] Sync log and connectivity status per vessel
+
+## Phase 6 — Superintendent Mode & Connectivity
+- [ ] APP_MODE configuration and license validation
+- [ ] Ship node registration with public key enrollment
+- [ ] HTTPS REST API sync (ship exposes read-only endpoint)
+- [ ] Bearer token and mTLS certificate authentication
+- [ ] VPN tunnel support
+- [ ] SSH reverse tunnel support
+- [ ] SFTP upload/download with file signature verification
+- [ ] Email attachment sync (IMAP polling + GPG decrypt)
+- [ ] USB/file export-import (.pyorb signed package format)
+- [ ] Connection priority and automatic fallback
+- [ ] Multi-vessel dashboard with sync status per ship
+- [ ] Incremental sync (only new records since last sync)
+- [ ] Digital signature verification on all imports
+- [ ] Fleet-wide audit and investigation
+- [ ] Fleet-wide statistics and compliance reporting
+- [ ] Sync log and connectivity status UI
+- [ ] Bandwidth estimates and satellite-optimized compression
