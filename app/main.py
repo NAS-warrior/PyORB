@@ -4,8 +4,7 @@ PyORB - Oil Record Book System
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, HTMLResponse
-from jinja2 import Environment, FileSystemLoader
+from fastapi.responses import JSONResponse, FileResponse
 from loguru import logger
 from pathlib import Path
 import uvicorn
@@ -33,18 +32,6 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
-# Jinja2 environment with cache disabled for Python 3.14 compatibility
-jinja_env = Environment(
-    loader=FileSystemLoader(str(BASE_DIR / "templates")),
-    cache_size=0,
-    auto_reload=True
-)
-
-app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
-app.include_router(users.router, prefix="/api/users", tags=["Users"])
-app.include_router(tanks.router, prefix="/api/tanks", tags=["Tanks"])
-
 
 @app.on_event("startup")
 async def startup_event():
@@ -63,16 +50,22 @@ async def health_check():
 
 
 @app.get("/")
-async def root(request: Request):
-    try:
-        template = jinja_env.get_template("dashboard.html")
-        html = template.render(request=request)
-        return HTMLResponse(content=html)
-    except Exception as e:
-        import traceback
-        logger.error(traceback.format_exc())
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+async def root():
+    # Serve HTML directly as a file - no Jinja2 needed
+    html_file = BASE_DIR / "templates" / "dashboard.html"
+    return FileResponse(str(html_file), media_type="text/html")
+
+
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(tanks.router, prefix="/api/tanks", tags=["Tanks"])
 
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host=settings.app_host, port=settings.app_port, reload=settings.debug)
+    uvicorn.run(
+        "app.main:app",
+        host=settings.app_host,
+        port=settings.app_port,
+        reload=settings.debug
+    )
