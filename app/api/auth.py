@@ -11,10 +11,8 @@ from datetime import timedelta
 
 from app.database import get_db
 from app.services.auth_service import authenticate_user, create_access_token
-from app.services.audit_service import log_action
-from app.models.audit_log import AuditAction
 from app.api.deps import get_current_active_user
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.config import settings
 
 router = APIRouter()
@@ -31,7 +29,7 @@ class UserResponse(BaseModel):
     username: str
     full_name: str
     role: str
-    rank: Optional[str]
+    rank: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -51,19 +49,29 @@ async def login(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
     access_token = create_access_token(
         data={"sub": user.username},
         expires_delta=timedelta(minutes=settings.jwt_expire_minutes)
     )
-    log_action(
-        db=db,
-        action=AuditAction.LOGIN,
-        table_name="users",
-        user=user,
-        record_id=user.id,
-        description=f"User {user.username} logged in",
-        ip_address=request.client.host
-    )
+
+    # Log login to audit - simple version without complex data
+    try:
+        from app.services.audit_service import log_action
+        from app.models.audit_log import AuditAction
+        log_action(
+            db=db,
+            action=AuditAction.LOGIN,
+            table_name="users",
+            user=user,
+            record_id=user.id,
+            description=f"User {user.username} logged in",
+            ip_address=str(request.client.host) if request.client else "unknown"
+        )
+    except Exception as e:
+        from loguru import logger
+        logger.warning(f"Audit log skipped: {e}")
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -72,7 +80,7 @@ async def login(
             "username": user.username,
             "full_name": user.full_name,
             "role": user.role.value,
-            "rank": user.rank
+            "rank": user.rank or ""
         }
     }
 
