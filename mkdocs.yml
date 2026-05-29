@@ -1,6 +1,7 @@
 site_name: PyORB Documentation
-site_description: Oil Record Book System - MARPOL Annex I Compliant
+site_description: Oil Record Book System — MARPOL Annex I Compliant
 site_author: NAS-warrior
+site_url: https://github.com/NAS-warrior/PyORB
 
 theme:
   name: material
@@ -10,7 +11,9 @@ theme:
   features:
     - navigation.tabs
     - navigation.sections
+    - navigation.top
     - search.highlight
+    - search.suggest
 
 nav:
   - Home: index.md
@@ -18,9 +21,14 @@ nav:
     - Getting Started: user/getting_started.md
   - MARPOL Reference:
     - Overview: marpol/overview.md
+    - Part I Operation Codes: marpol/part1_codes.md
+    - Part II Operation Codes: marpol/part2_codes.md
   - Technical:
-    - Architecture: technical/architecture.md
-    - Database: technical/database.md
+    - System Architecture: technical/architecture.md
+    - Operational Modes: technical/modes.md
+    - Database Design: technical/database.md
+    - Installation Guide: technical/installation.md
+    - Security Guide: technical/security.md
   - Development:
     - Changelog: development/changelog.md
     - Roadmap: development/roadmap.md

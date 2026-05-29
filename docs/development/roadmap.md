@@ -1,43 +1,57 @@
 # PyORB Development Roadmap
 
-## Phase 1 — Core Setup (Current)
-- [x] Project structure
-- [x] Database models
-- [x] Configuration system
-- [x] Basic web skeleton
-- [ ] PostgreSQL installation & security hardening
-- [ ] Alembic migrations
-- [ ] User authentication (JWT)
-- [ ] Vessel & tank setup UI
+## Phase 1 — Core Setup (Complete)
+- [x] Project structure and FastAPI skeleton
+- [x] PostgreSQL database models
+- [x] Configuration system with environment variables
+- [x] Documentation structure
 
-## Phase 2 — ORB Core
-- [ ] ORB Part I entry forms (Codes A-I)
-- [ ] ORB Part II entry forms (Codes A-G)
-- [ ] Entry validation (MARPOL compliance checks)
-- [ ] Audit log implementation
-- [ ] Position recording (lat/lon)
-- [ ] Port database
+## Phase 2 — Authentication & Setup UI (Complete)
+- [x] JWT authentication
+- [x] Vessel API with auto ORB mode assignment
+- [x] Users API with RBAC
+- [x] Tanks API
+- [x] Full web UI — topbar, tabs, operations, setup, reports
+- [x] Seed data — Marella Explorer 2
+- [x] Audit service
 
-## Phase 3 — Reports & Exports
-- [ ] PDF export (official ORB format per MEPC.312(74))
+## Phase 3 — ORB Operations & Exports (Next)
+- [ ] Tank → operation code smart filtering (only valid codes per tank type)
+- [ ] ORB Part I entry form — full submission to database
+- [ ] ORB Part II entry form — tankers only
+- [ ] Position recording — lat/lon from manual input or GPS
+- [ ] OWS/ODM PPM recording with validation
+- [ ] ORB entry list and viewing
+- [ ] PDF export — official MARPOL ORB format per MEPC.312(74)
 - [ ] Excel export
 - [ ] CSV export
-- [ ] Database backup & restore
-- [ ] Report filtering (date, operator, port, fuel type)
+- [ ] Audit log viewer in UI
+- [ ] Database backup/restore via UI
 
 ## Phase 4 — External Integrations
 - [ ] Valmarine REST API connector
 - [ ] Kongsberg OPC-UA connector
 - [ ] NAPA REST API connector
 - [ ] Generic CSV/JSON file import
-- [ ] Automatic tank level updates
+- [ ] Automatic tank level updates from external systems
+- [ ] GPS position auto-fill
 
 ## Phase 5 — Analytics & Statistics
-- [ ] Interactive dashboard
-- [ ] Fuel consumption charts
+- [ ] Fuel consumption charts over time
 - [ ] Tank history visualization
+- [ ] Operations by port
+- [ ] Operations by operator
 - [ ] Compliance timeline
-- [ ] Audit & investigation reports
-- [ ] Port-based operation statistics
-- [ ] Operator activity reports
 - [ ] Ballast water statistics
+- [ ] Filter by: date range, operator, port, fuel type, operation code
+
+## Phase 6 — Superintendent Mode
+- [ ] APP_MODE configuration and license validation
+- [ ] Ship node registration and management
+- [ ] REST sync API on ship nodes (push endpoint)
+- [ ] Superintendent data pull — on demand and scheduled
+- [ ] Multi-vessel dashboard
+- [ ] Fleet-wide audit and investigation
+- [ ] Fleet-wide reports and statistics
+- [ ] Superintendent-specific user roles
+- [ ] Sync log and connectivity status per vessel
