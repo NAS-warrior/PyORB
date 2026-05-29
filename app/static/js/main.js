@@ -149,9 +149,33 @@ async function boot(){
   document.getElementById('topbar-username').textContent=currentUser.full_name;
   document.getElementById('topbar-role').textContent=currentUser.role.replace(/_/g,' ');
   document.getElementById('topbar-avatar').textContent=currentUser.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  await Promise.all([loadAppInfo(),loadVessel(),loadTanks(),loadUsers()]);
+  await Promise.all([loadAppInfo(), loadUsers()]);
+  // Load saved vessel or first vessel
+  const savedVesselId = localStorage.getItem('dorb_vessel_id');
+  if (savedVesselId) {
+    const r = await req('GET', `/vessel/by-id/${savedVesselId}`);
+    if (r && r.ok) {
+      vesselData = await r.json();
+      activeVesselId = savedVesselId;
+      const tr = await req('GET', `/tanks/?vessel_id=${savedVesselId}`);
+      if (tr && tr.ok) tanksData = await tr.json();
+    }
+  }
+  if (!vesselData) await loadVessel();
+  if (!tanksData.length) await loadTanks();
+  // Update topbar
+  if (vesselData) {
+    document.getElementById('topbar-vesselname').innerHTML = `${vesselData.name} <span style="font-size:.6rem;opacity:.5">&#9660;</span>`;
+    document.getElementById('topbar-vesselinfo').textContent = `IMO ${vesselData.imo_number} | ${vesselData.flag_state} | ${vesselData.call_sign||'-'}`;
+    document.getElementById('topbar-mode').textContent = vesselData.orb_mode_label;
+  }
   renderTanks();
+  checkAlarms();
   switchTab('main');
+  // If no vessel selected, open the selector
+  if (!vesselData || !activeVesselId) {
+    setTimeout(() => openVesselSelector(), 500);
+  }
 }
 
 async function req(method,path,body=null){
