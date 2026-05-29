@@ -12,7 +12,7 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_db, get_db_status
-from app.api import auth, vessel, users, tanks, mode
+from app.api import auth, vessel, users, tanks, mode, orb
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -39,6 +39,7 @@ app.include_router(auth.router,   prefix="/api/auth",   tags=["Authentication"])
 app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
 app.include_router(users.router,  prefix="/api/users",  tags=["Users"])
 app.include_router(tanks.router,  prefix="/api/tanks",  tags=["Tanks"])
+app.include_router(orb.router,   prefix='/api/orb',   tags=['ORB'])
 app.include_router(mode.router,   prefix="/api/mode",   tags=["Mode"])
 
 

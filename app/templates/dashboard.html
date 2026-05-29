@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>DORB — Digital Oil Record Book</title>
 <link rel="stylesheet" href="/static/css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
 <body>
 
@@ -34,6 +35,8 @@
       <span id="topbar-vesselinfo" class="topbar-vesselinfo">Loading...</span>
     </div>
     <div class="topbar-badges">
+      <span id="topbar-ship-status" class="topbar-badge status-badge" style="display:none"></span>
+      <span id="topbar-env-warning" class="topbar-badge env-warn" style="display:none">&#9888; Special Area</span>
       <span id="topbar-mode" class="topbar-badge"></span>
       <span id="topbar-mode-label" class="topbar-badge"></span>
     </div>
@@ -47,62 +50,29 @@
     </div>
   </div>
 
+  <!-- ALARM BAR (hidden by default) -->
+  <div id="alarm-bar" class="alarm-bar" style="display:none"></div>
+
   <!-- MAIN TABS -->
   <div class="maintabs">
-    <button class="maintab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#128202; Dashboard</button>
-    <button class="maintab" data-tab="operations" onclick="switchTab('operations')">&#128203; Operations</button>
+    <button class="maintab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#128202; Dashboard &amp; Operations</button>
     <button class="maintab" data-tab="reports" onclick="switchTab('reports')">&#128196; Reports</button>
-    <button class="maintab" data-tab="setup" onclick="switchTab('setup')">&#9881; Setup</button>
+    <button class="maintab" data-tab="tools" onclick="switchTab('tools')">&#9881; Tools</button>
+    <button class="maintab" data-tab="setup" onclick="switchTab('setup')">&#128736; Setup</button>
   </div>
 
-  <!-- CONTENT -->
   <div class="app-body">
 
-    <!-- ── DASHBOARD ─────────────────────────────────────────────────────── -->
+    <!-- ── DASHBOARD & OPERATIONS ──────────────────────────────────────── -->
     <div id="tab-dashboard" class="tab-content active">
-      <div class="dash-layout">
+      <div class="main-layout">
 
-        <!-- LEFT: Tank gauges -->
-        <div class="dash-tanks-col">
-          <div class="col-header">Tank Status</div>
-          <div id="dash-tanks"></div>
-        </div>
-
-        <!-- RIGHT: Recent operations -->
-        <div class="dash-ops-col">
+        <!-- LEFT: Tanks -->
+        <div class="tanks-col">
           <div class="col-header-row">
-            <span class="col-header">Recent Operations</span>
-            <select id="recent-limit" onchange="loadRecentEntries()" class="recent-limit-sel">
-              <option value="10">Last 10</option>
-              <option value="20">Last 20</option>
-              <option value="50">Last 50</option>
-            </select>
-          </div>
-          <div class="panel">
-            <div class="panel-body" style="padding:0">
-              <table class="data-table">
-                <thead><tr><th>Date</th><th>Code</th><th>Operation</th><th>Tank</th><th>Qty m³</th><th>Officer</th></tr></thead>
-                <tbody id="recent-entries">
-                  <tr><td colspan="6" class="empty-row">No entries yet — use Operations tab</td></tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- ── OPERATIONS ────────────────────────────────────────────────────── -->
-    <div id="tab-operations" class="tab-content" style="display:none">
-      <div class="ops-layout">
-
-        <!-- LEFT: Sticky tank panel -->
-        <div class="ops-tanks-col">
-          <div class="col-header-row">
-            <span class="col-header">Tanks</span>
-            <select id="ops-tank-filter" onchange="filterOpsTanks()" class="recent-limit-sel">
-              <option value="">All</option>
+            <span class="col-header">Tank Status</span>
+            <select id="tank-filter" onchange="filterTanks()" class="sel-sm">
+              <option value="">All types</option>
               <option value="fuel_oil">Fuel Oil</option>
               <option value="diesel_oil">Diesel / MGO</option>
               <option value="lubricating_oil">Lube Oil</option>
@@ -113,73 +83,203 @@
               <option value="fresh_water">Fresh Water</option>
             </select>
           </div>
-          <div id="ops-tanks-panel"></div>
-          <p class="tap-hint">Tap a tank to see applicable operations</p>
+          <div id="tanks-panel"></div>
         </div>
 
-        <!-- RIGHT: Sticky operation panel -->
-        <div class="ops-form-col">
-          <div id="ops-form-panel" class="ops-form-placeholder">
+        <!-- RIGHT: Sticky panel — info + operations -->
+        <div class="right-col">
+          <div id="right-panel" class="right-placeholder">
             <div class="placeholder-icon">&#128203;</div>
-            <p>Select a tank on the left to begin recording an operation</p>
+            <p>Select a tank to view details and record operations</p>
           </div>
         </div>
 
       </div>
     </div>
 
-    <!-- ── REPORTS ───────────────────────────────────────────────────────── -->
+    <!-- ── REPORTS ──────────────────────────────────────────────────────── -->
     <div id="tab-reports" class="tab-content" style="display:none">
-      <div class="page-header">
-        <h1>Reports &amp; Exports</h1>
-        <p class="page-sub">Generate official ORB reports and export data</p>
+      <div class="page-header"><h1>Reports &amp; Exports</h1><p class="page-sub">Filter records and export in any format</p></div>
+
+      <!-- Filter section -->
+      <div class="form-card">
+        <div class="form-card-header"><h2>&#128269; Filter Records</h2><button class="btn btn-secondary btn-sm" onclick="clearFilters()">Clear All</button></div>
+        <div class="form-grid-3">
+          <div class="form-group"><label>Date From</label><input type="date" id="f-date-from"></div>
+          <div class="form-group"><label>Date To</label><input type="date" id="f-date-to"></div>
+          <div class="form-group"><label>ORB Part</label>
+            <select id="f-part"><option value="">Both</option><option value="1">Part I — Machinery Space</option><option value="2">Part II — Cargo/Ballast</option></select>
+          </div>
+          <div class="form-group"><label>Operation Code</label>
+            <select id="f-code" multiple style="height:80px">
+              <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+              <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+              <option value="G">G</option><option value="H">H</option><option value="I">I</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Tank Type</label>
+            <select id="f-tank-type" multiple style="height:80px">
+              <option value="fuel_oil">Fuel Oil</option><option value="diesel_oil">Diesel/MGO</option>
+              <option value="lubricating_oil">Lube Oil</option><option value="bilge">Bilge</option>
+              <option value="slop">Slop</option><option value="ballast">Ballast</option>
+              <option value="cargo">Cargo</option>
+            </select>
+          </div>
+          <div class="form-group"><label>Port Name</label><input type="text" id="f-port" placeholder="Search port..."></div>
+          <div class="form-group"><label>Officer</label><input type="text" id="f-officer" placeholder="Officer name..."></div>
+          <div class="form-group"><label>Qty From (m³)</label><input type="number" id="f-qty-from" placeholder="0.00"></div>
+          <div class="form-group"><label>Qty To (m³)</label><input type="number" id="f-qty-to" placeholder="0.00"></div>
+        </div>
+        <div class="form-actions-outer">
+          <button class="btn btn-primary" onclick="applyFilters()">&#128269; Apply Filters</button>
+        </div>
       </div>
-      <div class="reports-grid">
-        <div class="report-card">
-          <div class="report-icon">&#128196;</div>
-          <h3>ORB Part I — PDF</h3>
-          <p>Official Oil Record Book Part I in MARPOL format</p>
-          <div class="form-group" style="margin-top:12px"><label>Date From</label><input type="date" id="rep-p1-from"></div>
-          <div class="form-group"><label>Date To</label><input type="date" id="rep-p1-to"></div>
-          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('PDF export coming in Phase 3')">Export PDF</button>
-        </div>
-        <div class="report-card">
-          <div class="report-icon">&#128202;</div>
-          <h3>Statistics &amp; Analysis</h3>
-          <p>Fuel consumption, operations by port, operator activity</p>
-          <div class="form-group" style="margin-top:12px"><label>Period</label>
-            <select><option>Last 7 days</option><option>Last 30 days</option><option>Last 3 months</option><option>This year</option></select>
+
+      <!-- Results -->
+      <div class="form-card" id="filter-results" style="display:none">
+        <div class="form-card-header">
+          <h2>Results <span id="result-count" class="badge badge-blue"></span></h2>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="exportReport('print')">&#128438; Print / Preview</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportReport('pdf')">&#128196; PDF</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportReport('excel')">&#128200; Excel</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportReport('csv')">&#128202; CSV</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportReport('json')">&#123;&#125; JSON</button>
+            <button class="btn btn-secondary btn-sm" onclick="exportReport('xml')">&#128196; XML</button>
           </div>
-          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('Statistics coming in Phase 3')">Generate Report</button>
         </div>
-        <div class="report-card">
-          <div class="report-icon">&#128200;</div>
-          <h3>Excel / CSV Export</h3>
-          <p>Export all ORB entries to Excel or CSV format</p>
-          <div class="form-group" style="margin-top:12px"><label>Format</label>
-            <select><option>Excel (.xlsx)</option><option>CSV</option></select>
-          </div>
-          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('Excel export coming in Phase 3')">Export</button>
-        </div>
-        <div class="report-card">
-          <div class="report-icon">&#128190;</div>
-          <h3>Database Backup</h3>
-          <p>Export complete database for archiving or transfer</p>
-          <div class="form-group" style="margin-top:12px"><label>Format</label>
-            <select><option>PostgreSQL dump (.sql)</option><option>JSON</option></select>
-          </div>
-          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('DB export coming in Phase 3')">Export DB</button>
+        <div style="overflow-x:auto">
+          <table class="data-table" id="results-table">
+            <thead><tr><th>Date</th><th>Part</th><th>Code</th><th>Operation</th><th>Tank</th><th>Qty m³</th><th>Port</th><th>Officer</th><th>Status</th></tr></thead>
+            <tbody id="results-body"><tr><td colspan="9" class="empty-row">Apply filters to see results</td></tr></tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- ── SETUP ─────────────────────────────────────────────────────────── -->
+    <!-- ── TOOLS ────────────────────────────────────────────────────────── -->
+    <div id="tab-tools" class="tab-content" style="display:none">
+      <div class="page-header"><h1>Tools</h1><p class="page-sub">Scheduled tasks, backup, data import/export, GPS and email configuration</p></div>
+      <div class="tools-grid">
+
+        <div class="tool-card">
+          <div class="tool-icon">&#128190;</div>
+          <h3>Database Backup</h3>
+          <p>Create an encrypted backup of the DORB database</p>
+          <div class="form-group" style="margin-top:12px"><label>Schedule</label>
+            <select id="bk-schedule"><option value="manual">Manual only</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select>
+          </div>
+          <div class="tool-actions">
+            <button class="btn btn-primary" onclick="runBackup()">&#128190; Backup Now</button>
+            <button class="btn btn-secondary" onclick="alert('Restore coming in Phase 3C')">Restore</button>
+          </div>
+          <div id="backup-log" class="tool-log"></div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">&#128228;</div>
+          <h3>Data Import / Export</h3>
+          <p>Push or pull data in various formats</p>
+          <div class="form-group" style="margin-top:12px"><label>Format</label>
+            <select id="ie-format"><option>DB dump (.sql)</option><option>CSV</option><option>JSON</option><option>XML</option></select>
+          </div>
+          <div class="tool-actions">
+            <button class="btn btn-primary" onclick="alert('Export coming in Phase 3C')">Export</button>
+            <button class="btn btn-secondary" onclick="alert('Import coming in Phase 3C')">Import File</button>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">&#127758;</div>
+          <h3>GPS Configuration</h3>
+          <p>Configure GPS data source for automatic position recording</p>
+          <div class="form-group" style="margin-top:12px"><label>GPS Source</label>
+            <select id="gps-source" onchange="showGpsFields(this.value)">
+              <option value="manual">Manual input</option>
+              <option value="nmea">NMEA 0183 serial feed</option>
+              <option value="api">HTTP API endpoint</option>
+              <option value="google">Google Maps picker</option>
+            </select>
+          </div>
+          <div id="gps-nmea" style="display:none">
+            <div class="form-group"><label>Serial Port</label><input id="gps-port" placeholder="e.g. /dev/ttyS0 or COM3"></div>
+            <div class="form-group"><label>Baud Rate</label><select id="gps-baud"><option>4800</option><option>9600</option><option>38400</option></select></div>
+          </div>
+          <div id="gps-api-url" style="display:none">
+            <div class="form-group"><label>API URL</label><input id="gps-url" placeholder="http://ecdis.local/position"></div>
+            <div class="form-group"><label>Poll interval (sec)</label><input type="number" id="gps-interval" value="30"></div>
+          </div>
+          <div class="tool-actions">
+            <button class="btn btn-primary" onclick="saveGpsConfig()">Save GPS Config</button>
+            <button class="btn btn-secondary" onclick="testGps()">Test Connection</button>
+          </div>
+          <div id="gps-status" class="tool-log"></div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">&#128140;</div>
+          <h3>Email Configuration</h3>
+          <p>Configure SMTP and recipient lists for automated reports and alerts</p>
+          <div class="form-group" style="margin-top:12px"><label>SMTP Server</label><input id="smtp-host" placeholder="smtp.company.com"></div>
+          <div class="form-row-2">
+            <div class="form-group"><label>Port</label><input type="number" id="smtp-port" value="587"></div>
+            <div class="form-group"><label>Security</label><select id="smtp-sec"><option>STARTTLS</option><option>SSL/TLS</option><option>None</option></select></div>
+          </div>
+          <div class="form-group"><label>Username</label><input id="smtp-user" placeholder="user@company.com"></div>
+          <div class="form-group"><label>Password</label><input type="password" id="smtp-pass"></div>
+          <div class="form-group"><label>Daily Report Recipients</label><textarea id="email-daily" rows="2" placeholder="email1@co.com, email2@co.com"></textarea></div>
+          <div class="form-group"><label>Alert Recipients (forbidden ops, alarms)</label><textarea id="email-alerts" rows="2" placeholder="superintendent@co.com"></textarea></div>
+          <div class="form-group"><label>Scheduled Report Recipients</label><textarea id="email-scheduled" rows="2" placeholder="manager@co.com"></textarea></div>
+          <div class="tool-actions">
+            <button class="btn btn-primary" onclick="saveEmailConfig()">Save Email Config</button>
+            <button class="btn btn-secondary" onclick="testEmail()">Send Test Email</button>
+          </div>
+          <div id="email-status" class="tool-log"></div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">&#128197;</div>
+          <h3>Scheduled Tasks</h3>
+          <p>Configure automatic reports, exports and DORB-Control sync</p>
+          <div class="form-group" style="margin-top:12px"><label>Daily Report Time</label><input type="time" id="sched-daily" value="23:00"></div>
+          <div class="form-group"><label>Scheduled Report Interval</label>
+            <select id="sched-interval"><option>Disabled</option><option>Every 6 hours</option><option>Daily</option><option>Weekly</option><option>Monthly</option></select>
+          </div>
+          <div class="form-group"><label>DORB-Control Sync</label>
+            <select id="sched-sync"><option>Manual only</option><option>Every 6 hours</option><option>Daily</option><option>On connectivity</option></select>
+          </div>
+          <div class="form-group"><label>DB Backup Schedule</label>
+            <select id="sched-backup"><option>Manual only</option><option>Daily</option><option>Weekly</option></select>
+          </div>
+          <div class="tool-actions">
+            <button class="btn btn-primary" onclick="saveSchedules()">Save Schedules</button>
+          </div>
+        </div>
+
+        <div class="tool-card">
+          <div class="tool-icon">&#128272;</div>
+          <h3>Audit Integrity Check</h3>
+          <p>Verify the audit log hash chain has not been tampered with</p>
+          <div style="margin-top:12px;color:#888;font-size:.82rem">
+            The audit database uses a SHA-256 hash chain. Each record includes the hash of the previous record. Any tampering breaks the chain.
+          </div>
+          <div class="tool-actions" style="margin-top:12px">
+            <button class="btn btn-primary" onclick="runIntegrityCheck()">Run Integrity Check</button>
+          </div>
+          <div id="integrity-result" class="tool-log"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── SETUP ────────────────────────────────────────────────────────── -->
     <div id="tab-setup" class="tab-content" style="display:none">
       <div class="setup-layout">
         <div class="setup-sidebar">
-          <div class="setup-nav-item active" onclick="showSetupSection('vessel')">&#9875; Vessel Particulars</div>
+          <div class="setup-nav-item active" onclick="showSetupSection('vessel')">&#9875; Vessel</div>
           <div class="setup-nav-item" onclick="showSetupSection('users')">&#128100; Users &amp; Crew</div>
-          <div class="setup-nav-item" onclick="showSetupSection('tanks')">&#128674; Tank Configuration</div>
+          <div class="setup-nav-item" onclick="showSetupSection('tanks')">&#128674; Tanks</div>
+          <div class="setup-nav-item" onclick="showSetupSection('alarms')">&#128276; Par Levels &amp; Alarms</div>
           <div class="setup-nav-item" onclick="showSetupSection('system')">&#9881; System &amp; Mode</div>
           <div class="setup-nav-item" onclick="showSetupSection('audit')">&#128269; Audit Log</div>
         </div>
@@ -187,18 +287,38 @@
           <div id="setup-vessel"></div>
           <div id="setup-users"  style="display:none"></div>
           <div id="setup-tanks"  style="display:none"></div>
+          <div id="setup-alarms" style="display:none"></div>
           <div id="setup-system" style="display:none"></div>
           <div id="setup-audit"  style="display:none"></div>
         </div>
       </div>
     </div>
 
-  </div><!-- app-body -->
-</div><!-- app -->
+  </div>
+</div>
 
 <!-- MODAL -->
 <div id="modal-overlay" style="display:none" onclick="handleOverlay(event)">
   <div class="modal" id="modal-box"></div>
+</div>
+
+<!-- Google Maps Position Picker Modal -->
+<div id="map-modal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);z-index:2000;display:none;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:12px;padding:20px;width:700px;max-width:95vw">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <h2 style="color:#1a3a5c;font-size:1rem">Select Position on Map</h2>
+      <button class="btn btn-secondary btn-sm" onclick="closeMapModal()">Close</button>
+    </div>
+    <iframe id="map-frame" style="width:100%;height:400px;border:1px solid #dce1e7;border-radius:8px" src="about:blank"></iframe>
+    <div class="form-row-2" style="margin-top:12px">
+      <div class="form-group"><label>Latitude</label><input id="map-lat" placeholder="Click map to set"></div>
+      <div class="form-group"><label>Longitude</label><input id="map-lon" placeholder="Click map to set"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeMapModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="applyMapPosition()">Use This Position</button>
+    </div>
+  </div>
 </div>
 
 <script src="/static/js/main.js"></script>

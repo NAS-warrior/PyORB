@@ -36,6 +36,9 @@ class TankUpdate(BaseModel):
     position: Optional[str] = None
     external_system_id: Optional[str] = None
     is_active: Optional[bool] = None
+    alarm_high_pct: Optional[float] = None
+    alarm_low_pct: Optional[float] = None
+    alarm_enabled: Optional[bool] = None
 
 
 class TankResponse(BaseModel):
@@ -44,11 +47,17 @@ class TankResponse(BaseModel):
     name: str
     tank_type: str
     capacity_m3: float
+    current_volume_m3: float = 0.0
+    fill_pct: float = 0.0
+    available_m3: float = 0.0
     frame_from: Optional[str]
     frame_to: Optional[str]
     position: Optional[str]
     external_system_id: Optional[str]
     is_active: bool
+    alarm_high_pct: Optional[float] = 90.0
+    alarm_low_pct: Optional[float] = 10.0
+    alarm_enabled: bool = False
 
 
 @router.get("/", response_model=List[TankResponse])
@@ -65,8 +74,14 @@ async def list_tanks(
     return [TankResponse(
         id=str(t.id), vessel_id=str(t.vessel_id), name=t.name,
         tank_type=t.tank_type.value, capacity_m3=t.capacity_m3,
+        current_volume_m3=t.current_volume_m3 or 0.0,
+        fill_pct=t.fill_pct,
+        available_m3=t.available_m3,
         frame_from=t.frame_from, frame_to=t.frame_to, position=t.position,
-        external_system_id=t.external_system_id, is_active=t.is_active
+        external_system_id=t.external_system_id, is_active=t.is_active,
+        alarm_high_pct=t.alarm_high_pct,
+        alarm_low_pct=t.alarm_low_pct,
+        alarm_enabled=t.alarm_enabled or False
     ) for t in tanks]
 
 
@@ -135,3 +150,24 @@ async def deactivate_tank(
                user=current_user, record_id=tank.id,
                description=f"Deactivated tank {tank.name}")
     return {"message": f"Tank {tank.name} deactivated"}
+
+
+@router.put("/{tank_id}/alarms")
+async def update_tank_alarms(
+    tank_id: str,
+    alarm_high_pct: float = 90.0,
+    alarm_low_pct: float = 10.0,
+    alarm_enabled: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin)
+):
+    """Update par level alarm settings for a tank."""
+    from app.models.tank import Tank as TankModel
+    tank = db.query(TankModel).filter(TankModel.id == tank_id).first()
+    if not tank:
+        raise HTTPException(status_code=404, detail="Tank not found")
+    tank.alarm_high_pct = alarm_high_pct
+    tank.alarm_low_pct = alarm_low_pct
+    tank.alarm_enabled = alarm_enabled
+    db.commit()
+    return {"message": "Alarm settings updated"}
