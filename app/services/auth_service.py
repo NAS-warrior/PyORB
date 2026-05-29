@@ -11,15 +11,28 @@ from app.models.user import User, UserRole
 from app.config import settings
 from loguru import logger
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Use sha256_crypt as fallback if bcrypt has issues
+try:
+    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    # Test it works
+    pwd_context.hash("test")
+except Exception:
+    pwd_context = CryptContext(schemes=["sha256_crypt"], deprecated="auto")
+    logger.warning("bcrypt unavailable, using sha256_crypt")
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    try:
+        return pwd_context.verify(plain_password[:72], hashed_password)
+    except Exception as e:
+        logger.error(f"Password verify error: {e}")
+        return False
 
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    # Truncate to 72 bytes to stay within bcrypt limit
+    truncated = password[:72]
+    return pwd_context.hash(truncated)
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -70,7 +83,6 @@ def create_user(db: Session, username: str, full_name: str, password: str,
     return user
 
 
-# Role permission checks
 ROLE_PERMISSIONS = {
     UserRole.ADMIN: ["read", "write", "export", "admin"],
     UserRole.CHIEF_ENGINEER: ["read", "write", "export"],
