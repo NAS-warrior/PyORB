@@ -7,7 +7,7 @@ import sys, os, random
 from datetime import datetime, timedelta
 sys.path.insert(0, os.path.dirname(__file__))
 
-from app.database import SessionLocal, init_db
+from app.database import ShipSession as SessionLocal, init_db
 from app.models.vessel import Vessel, VesselType, ORBMode, get_orb_mode
 from app.models.user import User, UserRole
 from app.models.tank import Tank, TankType
