@@ -107,9 +107,33 @@ async def get_vessel(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_read)
 ):
+    """Get the first/primary vessel (for DORB-Ship mode)."""
     vessel = db.query(Vessel).filter(Vessel.is_active == True).first()
     if not vessel:
         raise HTTPException(status_code=404, detail="Vessel not configured yet")
+    return vessel_to_response(vessel)
+
+
+@router.get("/list/all")
+async def list_vessels(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_read)
+):
+    """List all vessels."""
+    vessels = db.query(Vessel).filter(Vessel.is_active == True).order_by(Vessel.name).all()
+    return [vessel_to_response(v) for v in vessels]
+
+
+@router.get("/by-id/{vessel_id}", response_model=VesselResponse)
+async def get_vessel_by_id(
+    vessel_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_read)
+):
+    """Get vessel by ID."""
+    vessel = db.query(Vessel).filter(Vessel.id == vessel_id, Vessel.is_active == True).first()
+    if not vessel:
+        raise HTTPException(status_code=404, detail="Vessel not found")
     return vessel_to_response(vessel)
 
 

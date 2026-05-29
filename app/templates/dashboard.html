@@ -30,9 +30,9 @@
   <!-- TOPBAR -->
   <div class="topbar">
     <div class="topbar-brand">&#9875; DORB</div>
-    <div class="topbar-vessel">
-      <span id="topbar-vesselname">-</span>
-      <span id="topbar-vesselinfo" class="topbar-vesselinfo">Loading...</span>
+    <div class="topbar-vessel" onclick="openVesselSelector()" title="Click to change vessel" style="cursor:pointer">
+      <span id="topbar-vesselname" style="display:flex;align-items:center;gap:6px">- <span style="font-size:.6rem;opacity:.5">&#9660;</span></span>
+      <span id="topbar-vesselinfo" class="topbar-vesselinfo">Click to select vessel</span>
     </div>
     <div class="topbar-center">
       <span id="topbar-ship-status" class="status-pill status-unknown">&#128225; Unknown</span>

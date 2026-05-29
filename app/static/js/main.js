@@ -175,7 +175,9 @@ async function loadVessel(){
 }
 
 async function loadTanks(){
-  const r=await req('GET','/tanks/');
+  const vid = activeVesselId || '';
+  const url = vid ? `/tanks/?vessel_id=${vid}` : '/tanks/';
+  const r=await req('GET', url);
   if(r&&r.ok){tanksData=await r.json();checkAlarms();}
 }
 
@@ -1009,3 +1011,135 @@ document.addEventListener('keydown',e=>{
 });
 loadAppInfo();
 if(token&&currentUser)boot();
+
+/* ── Vessel Selector ─────────────────────────────────────────────────────── */
+let activeVesselId = localStorage.getItem('dorb_vessel_id') || null;
+
+async function openVesselSelector() {
+    const r = await req('GET', '/vessel/list/all');
+    if (!r || !r.ok) { toast('Could not load vessels','error'); return; }
+    const vessels = await r.json();
+    const isAdmin = currentUser.role === 'admin';
+
+    const rows = vessels.map(v => `
+        <tr onclick="selectVessel('${v.id}')" style="cursor:pointer" class="${activeVesselId===v.id?'active-vessel-row':''}">
+            <td><strong>${v.name}</strong></td>
+            <td><code style="font-size:.72rem">${v.imo_number}</code></td>
+            <td>${v.flag_state}</td>
+            <td><span class="badge badge-grey">${v.vessel_type_label}</span></td>
+            <td><span class="badge badge-blue">${v.orb_mode_label}</span></td>
+            <td>${v.gross_tonnage ? v.gross_tonnage+' GT' : '-'}</td>
+            <td>${activeVesselId===v.id ? '<span class="badge badge-green">Active</span>' : ''}</td>
+        </tr>`).join('');
+
+    openModal(`<h2>&#9875; Select Vessel</h2>
+        <div style="overflow-x:auto;margin-bottom:14px">
+            <table class="data-table">
+                <thead><tr><th>Vessel</th><th>IMO</th><th>Flag</th><th>Type</th><th>ORB Mode</th><th>GT</th><th></th></tr></thead>
+                <tbody>${rows || '<tr><td colspan="7" class="empty-row">No vessels configured</td></tr>'}</tbody>
+            </table>
+        </div>
+        ${isAdmin ? `<div style="display:flex;gap:8px">
+            <button class="btn btn-primary" onclick="showAddVesselForm()">+ Add Vessel</button>
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>` : `<button class="btn btn-secondary" onclick="closeModal()">Close</button>`}
+    `);
+}
+
+async function selectVessel(vesselId) {
+    const r = await req('GET', `/vessel/by-id/${vesselId}`);
+    if (!r || !r.ok) { toast('Could not load vessel','error'); return; }
+    vesselData = await r.json();
+    activeVesselId = vesselId;
+    localStorage.setItem('dorb_vessel_id', vesselId);
+
+    // Update topbar
+    document.getElementById('topbar-vesselname').innerHTML = `${vesselData.name} <span style="font-size:.6rem;opacity:.5">&#9660;</span>`;
+    document.getElementById('topbar-vesselinfo').textContent =
+        `IMO ${vesselData.imo_number} | ${vesselData.flag_state} | ${vesselData.call_sign||'-'}`;
+    document.getElementById('topbar-mode').textContent = vesselData.orb_mode_label;
+
+    // Reload tanks for this vessel
+    const tr = await req('GET', `/tanks/?vessel_id=${vesselId}`);
+    if (tr && tr.ok) tanksData = await tr.json();
+
+    closeModal();
+    selectedTank = null;
+    document.getElementById('right-panel').innerHTML = `
+        <div class="right-placeholder">
+            <div class="placeholder-icon">&#128674;</div>
+            <p>Select a tank to view details and record operations</p>
+        </div>`;
+    renderTanks();
+    checkAlarms();
+    toast(`Switched to ${vesselData.name}`, 'success');
+}
+
+function showAddVesselForm() {
+    const types = [
+        ['passenger','Passenger Ship'],['bulk_carrier','Bulk Carrier'],
+        ['general_cargo','General Cargo'],['container','Container Ship'],
+        ['oil_tanker','Oil Tanker'],['product_tanker','Product Tanker'],
+        ['chemical_tanker','Chemical Tanker'],['oil_barge','Oil Barge'],['other','Other']
+    ];
+    openModal(`<h2>+ Add New Vessel</h2>
+        <div class="form-grid-2">
+            <div class="form-group"><label>Vessel Name *</label><input id="nv-name" placeholder="e.g. MV Nordic Star"></div>
+            <div class="form-group"><label>IMO Number *</label><input id="nv-imo" placeholder="e.g. 9123456"></div>
+            <div class="form-group"><label>MMSI</label><input id="nv-mmsi" placeholder="e.g. 257123000"></div>
+            <div class="form-group"><label>Call Sign</label><input id="nv-call" placeholder="e.g. LAQB"></div>
+            <div class="form-group"><label>Flag State *</label><input id="nv-flag" placeholder="e.g. Norway"></div>
+            <div class="form-group"><label>Vessel Type *</label>
+                <select id="nv-type" onchange="previewOrbMode(this.value)">
+                    ${types.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}
+                </select>
+            </div>
+            <div class="form-group"><label>Gross Tonnage</label><input id="nv-gt" placeholder="e.g. 29814"></div>
+            <div class="form-group"><label>Deadweight (T)</label><input id="nv-dwt" placeholder="e.g. 46500"></div>
+            <div class="form-group"><label>Year Built</label><input id="nv-year" placeholder="e.g. 2007"></div>
+            <div class="form-group"><label>Owner</label><input id="nv-owner" placeholder="Company name"></div>
+            <div class="form-group"><label>Operator</label><input id="nv-oper" placeholder="Operator name"></div>
+            <div class="form-group"><label>ORB Mode (auto)</label>
+                <input id="nv-mode-prev" value="Part I — Machinery Space Only" disabled style="background:#f4f6f9;color:#6b7a8d"></div>
+        </div>
+        <div id="nv-msg"></div>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="openVesselSelector()">Back</button>
+            <button class="btn btn-primary" onclick="saveNewVessel()">Add Vessel</button>
+        </div>`);
+}
+
+function previewOrbMode(type) {
+    const tankers = ['oil_tanker','product_tanker','chemical_tanker','oil_barge'];
+    const el = document.getElementById('nv-mode-prev');
+    if (el) el.value = tankers.includes(type) ? 'Part I + Part II — Tanker Operations' : 'Part I — Machinery Space Only';
+}
+
+async function saveNewVessel() {
+    const data = {
+        name: document.getElementById('nv-name').value,
+        imo_number: document.getElementById('nv-imo').value,
+        mmsi: document.getElementById('nv-mmsi').value || null,
+        call_sign: document.getElementById('nv-call').value || null,
+        flag_state: document.getElementById('nv-flag').value,
+        vessel_type: document.getElementById('nv-type').value,
+        gross_tonnage: document.getElementById('nv-gt').value || null,
+        deadweight: document.getElementById('nv-dwt').value || null,
+        year_built: document.getElementById('nv-year').value || null,
+        owner: document.getElementById('nv-owner').value || null,
+        operator: document.getElementById('nv-oper').value || null,
+    };
+    if (!data.name || !data.imo_number || !data.flag_state) {
+        document.getElementById('nv-msg').innerHTML = '<div class="alert alert-error">Name, IMO and Flag State are required</div>';
+        return;
+    }
+    const r = await req('POST', '/vessel/', data);
+    if (r && r.ok) {
+        const vessel = await r.json();
+        toast(`Vessel ${vessel.name} added successfully`, 'success');
+        await selectVessel(vessel.id);
+    } else {
+        const err = await r?.json();
+        document.getElementById('nv-msg').innerHTML = `<div class="alert alert-error">${err?.detail || 'Save failed'}</div>`;
+    }
+}

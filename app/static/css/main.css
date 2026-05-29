@@ -252,3 +252,8 @@ input,select,textarea,button{font-family:inherit;font-size:13px}
 .toast{position:fixed;bottom:18px;right:18px;padding:10px 16px;border-radius:8px;font-size:.82rem;font-weight:500;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.18);animation:slideup .2s ease;color:#fff}
 @keyframes slideup{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .sel-sm{font-size:.72rem;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--text2)}
+
+/* ── Vessel Selector ──────────────────────────────────────────────────────── */
+.topbar-vessel:hover #topbar-vesselname{text-decoration:underline;text-underline-offset:2px}
+.active-vessel-row td{background:#eef5fd!important;font-weight:500}
+.active-vessel-row:hover td{background:#ddeefb!important}

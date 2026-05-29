@@ -63,13 +63,16 @@ class TankResponse(BaseModel):
 @router.get("/", response_model=List[TankResponse])
 async def list_tanks(
     tank_type: Optional[TankType] = None,
+    vessel_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_read)
 ):
-    """List all tanks, optionally filtered by type."""
+    """List tanks, optionally filtered by type and/or vessel."""
     query = db.query(Tank).filter(Tank.is_active == True)
     if tank_type:
         query = query.filter(Tank.tank_type == tank_type)
+    if vessel_id:
+        query = query.filter(Tank.vessel_id == vessel_id)
     tanks = query.order_by(Tank.name).all()
     return [TankResponse(
         id=str(t.id), vessel_id=str(t.vessel_id), name=t.name,
