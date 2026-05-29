@@ -108,6 +108,7 @@ class ORBPart1Create(BaseModel):
     vessel_id: str
     officer_id: str
     operation_code: str
+    operation_type: Optional[str] = None
     operation_date: str
     ship_status: Optional[str] = "unknown"
     position_lat: Optional[float] = None
@@ -115,10 +116,15 @@ class ORBPart1Create(BaseModel):
     position_source: Optional[str] = "manual"
     port_name: Optional[str] = None
     tank_id: Optional[str] = None
+    tank_to_id: Optional[str] = None
     quantity_m3: Optional[float] = None
     discharge_method: Optional[str] = None
     ows_rate: Optional[float] = None
     oil_content_ppm: Optional[float] = None
+    bunker_grade: Optional[str] = None
+    bunker_mass_mt: Optional[float] = None
+    bunker_density: Optional[float] = None
+    bunker_supplier: Optional[str] = None
     in_special_area: Optional[bool] = False
     special_area_name: Optional[str] = None
     remarks: Optional[str] = None
@@ -128,6 +134,7 @@ class ORBPart2Create(BaseModel):
     vessel_id: str
     officer_id: str
     operation_code: str
+    operation_type: Optional[str] = None
     operation_date: str
     ship_status: Optional[str] = "unknown"
     position_lat: Optional[float] = None
@@ -137,6 +144,10 @@ class ORBPart2Create(BaseModel):
     tank_id: Optional[str] = None
     cargo_type: Optional[str] = None
     quantity_m3: Optional[float] = None
+    bunker_grade: Optional[str] = None
+    bunker_mass_mt: Optional[float] = None
+    bunker_density: Optional[float] = None
+    bunker_supplier: Optional[str] = None
     in_special_area: Optional[bool] = False
     special_area_name: Optional[str] = None
     remarks: Optional[str] = None
@@ -245,6 +256,11 @@ async def create_part1_entry(
         tank_id=data.tank_id,
         quantity_m3=data.quantity_m3,
         volume_before_m3=tank.current_volume_m3 if tank else None,
+        tank_to_id=data.tank_to_id,
+        bunker_grade=data.bunker_grade,
+        bunker_mass_mt=data.bunker_mass_mt,
+        bunker_density=data.bunker_density,
+        bunker_supplier=data.bunker_supplier,
         discharge_method=data.discharge_method,
         ows_rate=data.ows_rate,
         oil_content_ppm=data.oil_content_ppm,
