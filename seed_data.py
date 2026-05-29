@@ -32,7 +32,7 @@ def seed():
                 mmsi="249054000",
                 call_sign="9HJI9",
                 flag_state="Malta",
-                vessel_type=VesselType.OTHER,  # Passenger/Cruise
+                vessel_type=VesselType.PASSENGER,  # Passenger/Cruise
                 gross_tonnage="72458",
                 deadweight="7260",
                 year_built="1995",

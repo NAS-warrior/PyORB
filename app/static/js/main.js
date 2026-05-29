@@ -1,426 +1,545 @@
-// PyORB Main JavaScript - Full UI
-const API = '/api';
-let token = localStorage.getItem('pyorb_token');
-let currentUser = JSON.parse(localStorage.getItem('pyorb_user') || 'null');
+const API='/api';
+let token=localStorage.getItem('pyorb_token');
+let currentUser=JSON.parse(localStorage.getItem('pyorb_user')||'null');
+let vesselData=null;
+let tanksData=[];
+let selectedP1Code=null;
+let selectedP2Code=null;
 
-// ─── Auth ────────────────────────────────────────────────────────────────────
-async function login() {
-    const username = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value.trim();
-    const errorDiv = document.getElementById('login-error');
-    errorDiv.style.display = 'none';
-    if (!username || !password) { showLoginError('Please enter username and password'); return; }
-    try {
-        const fd = new FormData();
-        fd.append('username', username);
-        fd.append('password', password);
-        const res = await fetch(`${API}/auth/token`, { method: 'POST', body: fd });
-        const data = await res.json();
-        if (!res.ok) { showLoginError(data.detail || 'Login failed'); return; }
-        token = data.access_token;
-        currentUser = data.user;
-        localStorage.setItem('pyorb_token', token);
-        localStorage.setItem('pyorb_user', JSON.stringify(currentUser));
-        showApp();
-    } catch(e) { showLoginError('Connection error. Is the server running?'); }
+// ── Auth ──────────────────────────────────────────────────────────────────────
+async function login(){
+  const u=document.getElementById('username').value.trim();
+  const p=document.getElementById('password').value.trim();
+  const err=document.getElementById('login-error');
+  err.style.display='none';
+  if(!u||!p){err.textContent='Enter username and password';err.style.display='block';return;}
+  try{
+    const fd=new FormData();fd.append('username',u);fd.append('password',p);
+    const res=await fetch(`${API}/auth/token`,{method:'POST',body:fd});
+    const data=await res.json();
+    if(!res.ok){err.textContent=data.detail||'Login failed';err.style.display='block';return;}
+    token=data.access_token;currentUser=data.user;
+    localStorage.setItem('pyorb_token',token);
+    localStorage.setItem('pyorb_user',JSON.stringify(currentUser));
+    showApp();
+  }catch(e){err.textContent='Connection error';err.style.display='block';}
+}
+function logout(){
+  localStorage.removeItem('pyorb_token');localStorage.removeItem('pyorb_user');
+  token=null;currentUser=null;vesselData=null;
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+}
+async function showApp(){
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('topbar-username').textContent=currentUser.full_name;
+  document.getElementById('topbar-role').textContent=currentUser.role.replace(/_/g,' ');
+  document.getElementById('topbar-avatar').textContent=currentUser.full_name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  await loadVessel();
+  await loadTanks();
+  switchTab('dashboard');
 }
 
-function showLoginError(msg) {
-    const d = document.getElementById('login-error');
-    d.textContent = msg; d.style.display = 'block';
+// ── API ───────────────────────────────────────────────────────────────────────
+async function req(method,path,body=null){
+  const opts={method,headers:{'Authorization':`Bearer ${token}`,'Content-Type':'application/json'}};
+  if(body)opts.body=JSON.stringify(body);
+  const res=await fetch(`${API}${path}`,opts);
+  if(res.status===401){logout();return null;}
+  return res;
 }
 
-function logout() {
-    localStorage.removeItem('pyorb_token');
-    localStorage.removeItem('pyorb_user');
-    token = null; currentUser = null;
-    document.getElementById('app').style.display = 'none';
-    document.getElementById('login-screen').style.display = 'flex';
+// ── Vessel ────────────────────────────────────────────────────────────────────
+async function loadVessel(){
+  const res=await req('GET','/vessel/');
+  if(res&&res.ok){
+    vesselData=await res.json();
+    document.getElementById('topbar-vesselname').textContent=vesselData.name;
+    document.getElementById('topbar-vesselinfo').textContent=
+      `IMO ${vesselData.imo_number} | Flag: ${vesselData.flag_state} | Call: ${vesselData.call_sign||'-'}`;
+    document.getElementById('topbar-mode').textContent=vesselData.orb_mode_label;
+  }else{
+    document.getElementById('topbar-vesselname').textContent='Vessel not configured';
+    document.getElementById('topbar-mode').textContent='';
+  }
 }
 
-function showApp() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app').style.display = 'block';
-    document.getElementById('nav-username').textContent = currentUser.full_name;
-    document.getElementById('nav-role').textContent = currentUser.role.replace(/_/g,' ');
-    showSection('dashboard');
+// ── Tanks ─────────────────────────────────────────────────────────────────────
+async function loadTanks(){
+  const res=await req('GET','/tanks/');
+  if(res&&res.ok)tanksData=await res.json();
 }
 
-// ─── API Helper ──────────────────────────────────────────────────────────────
-async function api(method, path, body=null) {
-    const opts = { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }};
-    if (body) opts.body = JSON.stringify(body);
-    const res = await fetch(`${API}${path}`, opts);
-    if (res.status === 401) { logout(); return null; }
-    return res;
+// ── Tab Navigation ────────────────────────────────────────────────────────────
+function switchTab(name){
+  document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
+  document.querySelectorAll('.maintab').forEach(t=>t.classList.remove('active'));
+  const tc=document.getElementById(`tab-${name}`);
+  if(tc){tc.style.display='block';tc.classList.add('active');}
+  const btn=document.querySelector(`.maintab[data-tab="${name}"]`);
+  if(btn)btn.classList.add('active');
+  if(name==='dashboard')loadDashboard();
+  if(name==='operations')loadOperations();
+  if(name==='setup'){loadSetupVessel();showSetupSection('vessel');}
+  if(name==='audit')loadAuditLog();
 }
 
-// ─── Navigation ──────────────────────────────────────────────────────────────
-function showSection(name) {
-    ['dashboard','vessel','users','tanks'].forEach(s => {
-        const el = document.getElementById(`section-${s}`);
-        if (el) el.style.display = s === name ? 'block' : 'none';
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+async function loadDashboard(){
+  const [uRes]=await Promise.all([req('GET','/users/')]);
+  const users=uRes&&uRes.ok?await uRes.json():[];
+  const totalCap=tanksData.reduce((s,t)=>s+t.capacity_m3,0);
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat-card"><div class="stat-val">${tanksData.length}</div><div class="stat-lbl">Tanks</div></div>
+    <div class="stat-card"><div class="stat-val">${Math.round(totalCap)}</div><div class="stat-lbl">Total Cap m³</div></div>
+    <div class="stat-card"><div class="stat-val">${users.length}</div><div class="stat-lbl">Users</div></div>
+    <div class="stat-card"><div class="stat-val">0</div><div class="stat-lbl">ORB Entries</div></div>`;
+  renderTankGauges('dash-tanks',tanksData);
+}
+
+// ── Tank Gauges ───────────────────────────────────────────────────────────────
+const TANK_COLORS={fuel_oil:'g-hfo',diesel_oil:'g-mgo',lubricating_oil:'g-lo',
+  bilge:'g-bilge',slop:'g-slop',ballast:'g-ballast',cargo:'g-cargo',
+  fresh_water:'g-fw',other:'g-other'};
+const TANK_LABELS={fuel_oil:'Heavy Fuel Oil',diesel_oil:'Diesel / MGO',
+  lubricating_oil:'Lubricating Oil',bilge:'Bilge',slop:'Slop',
+  ballast:'Ballast',cargo:'Cargo',fresh_water:'Fresh Water',other:'Other'};
+const TYPE_ORDER=['fuel_oil','diesel_oil','lubricating_oil','bilge','slop','ballast','cargo','fresh_water','other'];
+
+function renderTankGauges(containerId,tanks,selectable=false,onSelect=null){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  const groups={};
+  TYPE_ORDER.forEach(t=>groups[t]=[]);
+  tanks.forEach(t=>{const k=t.tank_type in groups?t.tank_type:'other';groups[k].push(t);});
+  let html='';
+  TYPE_ORDER.forEach(type=>{
+    const grp=groups[type];
+    if(!grp.length)return;
+    const cap=grp.reduce((s,t)=>s+t.capacity_m3,0);
+    html+=`<div class="tank-group-label">${TANK_LABELS[type]||type} — ${grp.length} tanks — ${cap.toFixed(0)} m³ total</div>`;
+    html+=`<div class="tank-grid">`;
+    grp.forEach(t=>{
+      // Simulate fill level between 20-90% for demo
+      const pct=Math.floor(Math.random()*70+20);
+      const vol=(t.capacity_m3*pct/100).toFixed(1);
+      const cls=TANK_COLORS[t.tank_type]||'g-other';
+      const selAttr=selectable?`onclick="selectTank('${t.id}','${t.name}','${t.tank_type}')"` :'';
+      html+=`<div class="tank-card" id="tc-${t.id}" ${selAttr}>
+        <div class="tank-name">${t.name.replace('Tank','').replace('tank','').trim()}</div>
+        <div class="gauge-wrap">
+          <div class="gauge-bar"><div class="gauge-fill ${cls}" style="height:${pct}%"></div></div>
+          <div class="gauge-pct">${pct}%</div>
+          <div class="gauge-vol">${vol} m³</div>
+        </div>
+      </div>`;
     });
-    // Set active nav link
-    document.querySelectorAll('.nav-links a').forEach(a => a.classList.remove('active'));
-    const activeLink = document.querySelector(`.nav-links a[data-section="${name}"]`);
-    if (activeLink) activeLink.classList.add('active');
-
-    if (name === 'dashboard') loadDashboard();
-    if (name === 'vessel')    loadVesselSection();
-    if (name === 'users')     loadUsers();
-    if (name === 'tanks')     loadTanks();
+    html+=`</div>`;
+  });
+  el.innerHTML=html||'<p style="color:#aaa;padding:10px">No tanks configured</p>';
 }
 
-// ─── Dashboard ───────────────────────────────────────────────────────────────
-async function loadDashboard() {
-    // Load vessel summary
-    const res = await api('GET', '/vessel/');
-    const summary = document.getElementById('vessel-summary');
-    if (res && res.ok) {
-        const v = await res.json();
-        summary.innerHTML = `
-            <div class="vessel-info-grid">
-                <div class="vinfo"><span class="vlabel">Vessel Name</span><span class="vvalue">${v.name}</span></div>
-                <div class="vinfo"><span class="vlabel">IMO Number</span><span class="vvalue">${v.imo_number}</span></div>
-                <div class="vinfo"><span class="vlabel">MMSI</span><span class="vvalue">${v.mmsi||'-'}</span></div>
-                <div class="vinfo"><span class="vlabel">Call Sign</span><span class="vvalue">${v.call_sign||'-'}</span></div>
-                <div class="vinfo"><span class="vlabel">Flag State</span><span class="vvalue">${v.flag_state}</span></div>
-                <div class="vinfo"><span class="vlabel">Vessel Type</span><span class="vvalue">${v.vessel_type.replace(/_/g,' ')}</span></div>
-                <div class="vinfo"><span class="vlabel">Gross Tonnage</span><span class="vvalue">${v.gross_tonnage||'-'} GT</span></div>
-                <div class="vinfo"><span class="vlabel">Deadweight</span><span class="vvalue">${v.deadweight||'-'} T</span></div>
-                <div class="vinfo"><span class="vlabel">Year Built</span><span class="vvalue">${v.year_built||'-'}</span></div>
-                <div class="vinfo"><span class="vlabel">Owner</span><span class="vvalue">${v.owner||'-'}</span></div>
-                <div class="vinfo"><span class="vlabel">Operator</span><span class="vvalue">${v.operator||'-'}</span></div>
-                <div class="vinfo"><span class="vlabel">ORB Mode</span><span class="vvalue orb-mode">${v.orb_mode.replace(/_/g,' ').toUpperCase()}</span></div>
-            </div>`;
-    } else {
-        summary.innerHTML = `<div class="no-vessel">No vessel configured. <a href="#" onclick="showSection('vessel')">Setup vessel</a></div>`;
-    }
-
-    // Load stats
-    const [uRes, tRes] = await Promise.all([api('GET','/users/'), api('GET','/tanks/')]);
-    const users = uRes && uRes.ok ? await uRes.json() : [];
-    const tanks = tRes && tRes.ok ? await tRes.json() : [];
-
-    // Group tanks by type
-    const tankGroups = tanks.reduce((g, t) => { g[t.tank_type] = (g[t.tank_type]||0)+1; return g; }, {});
-    const totalCap = tanks.reduce((s, t) => s + t.capacity_m3, 0);
-
-    document.getElementById('dash-stats').innerHTML = `
-        <div class="stat-card"><div class="stat-num">${users.length}</div><div class="stat-label">Users</div></div>
-        <div class="stat-card"><div class="stat-num">${tanks.length}</div><div class="stat-label">Tanks</div></div>
-        <div class="stat-card"><div class="stat-num">${totalCap.toFixed(0)}</div><div class="stat-label">Total Cap (m³)</div></div>
-        <div class="stat-card"><div class="stat-num">0</div><div class="stat-label">ORB Entries</div></div>
-    `;
+function selectTank(id,name,type){
+  document.querySelectorAll('.tank-card').forEach(c=>c.classList.remove('selected'));
+  document.getElementById(`tc-${id}`)?.classList.add('selected');
+  // Auto-fill tank in the active form
+  const p1tank=document.getElementById('p1-tank');
+  const p2tank=document.getElementById('p2-tank');
+  if(p1tank){p1tank.value=id;}
+  if(p2tank){p2tank.value=id;}
 }
 
-// ─── Vessel ──────────────────────────────────────────────────────────────────
-async function loadVesselSection() {
-    const res = await api('GET', '/vessel/');
-    let vessel = null;
-    if (res && res.ok) vessel = await res.json();
+// ── Operations ────────────────────────────────────────────────────────────────
+const PART1_CODES=[
+  {code:'A',label:'Ballasting of fuel oil tanks',desc:'Ballasting or cleaning of fuel oil tanks. State tank identity, position, and quantity of water pumped in.'},
+  {code:'B',label:'Cleaning of fuel oil tanks',desc:'Cleaning of fuel oil tanks. State tank identity and method of cleaning.'},
+  {code:'C',label:'Discharge of dirty ballast',desc:'Discharge of dirty ballast or cleaning water from fuel oil tanks. State method of discharge and quantity.'},
+  {code:'D',label:'Cleaning of bilge water',desc:'Cleaning of bilge water. State quantity of bilge water, position, and method used.'},
+  {code:'E',label:'Discharge of bilge water',desc:'Discharge overboard, to shore, or to reception facility. State rate, position, OWS reading in PPM.'},
+  {code:'F',label:'Condition of OWS / ODM',desc:'Condition of the oil filtering equipment. State any malfunction or repairs done to OWS/ODM.'},
+  {code:'G',label:'Accidental / other discharge',desc:'Accidental or other exceptional discharge of oil. State circumstances, quantity, and action taken.'},
+  {code:'H',label:'Bunkering of fuel / LO',desc:'Bunkering of fuel oil or bulk lubricating oil. State port, tank identity, quantity, grade of oil.'},
+  {code:'I',label:'Additional procedures',desc:'Additional operational procedures and general remarks per MARPOL Annex I.'},
+];
+const PART2_CODES=[
+  {code:'A',label:'Loading of oil cargo',desc:'Loading of oil cargo. State port, tank identity, type and quantity of cargo loaded.'},
+  {code:'B',label:'Internal transfer of cargo',desc:'Internal transfer of oil cargo during voyage. State tanks and quantity transferred.'},
+  {code:'C',label:'Unloading of oil cargo',desc:'Unloading of oil cargo. State port, tank identity, and quantity discharged.'},
+  {code:'D',label:'Ballasting of cargo tanks',desc:'Ballasting of cargo tanks and dedicated clean ballast tanks. State tanks and quantity.'},
+  {code:'E',label:'Cleaning of cargo tanks',desc:'Cleaning of cargo tanks including crude oil washing. State method and tanks cleaned.'},
+  {code:'F',label:'Discharge of ballast water',desc:'Discharge of dirty ballast water or cleaning water from cargo tanks. State position and quantity.'},
+  {code:'G',label:'Accidental / other discharge',desc:'Accidental or exceptional discharge. State circumstances, quantity, and corrective action.'},
+];
 
-    const isAdmin = currentUser.role === 'admin';
-    const disabled = isAdmin ? '' : 'disabled';
-    const vesselTypes = ['oil_tanker','bulk_carrier','general_cargo','container','other'];
-    const orbModes = [['part1','Part I — Machinery Space'],['part2','Part II — Cargo/Ballast'],['both','Both Part I and Part II']];
+async function loadOperations(){
+  if(!vesselData){await loadVessel();}
+  if(!tanksData.length){await loadTanks();}
+  document.getElementById('ops-sub').textContent=
+    vesselData?`${vesselData.name} — ${vesselData.orb_mode_label}`:'Record ORB operations';
 
-    document.getElementById('vessel-form-container').innerHTML = `
-        <div class="form-card">
-            <div class="form-card-header">
-                <h2>Vessel Particulars</h2>
-                ${vessel ? `<span class="badge badge-green">Configured</span>` : `<span class="badge badge-orange">Not Configured</span>`}
-            </div>
-            <div class="form-grid">
-                <div class="form-group"><label>Vessel Name *</label><input id="v-name" value="${vessel?.name||''}" ${disabled} placeholder="e.g. Marella Explorer 2"></div>
-                <div class="form-group"><label>IMO Number *</label><input id="v-imo" value="${vessel?.imo_number||''}" ${vessel?'disabled':''} placeholder="e.g. 9072446"></div>
-                <div class="form-group"><label>MMSI</label><input id="v-mmsi" value="${vessel?.mmsi||''}" ${disabled} placeholder="e.g. 249054000"></div>
-                <div class="form-group"><label>Call Sign</label><input id="v-call" value="${vessel?.call_sign||''}" ${disabled} placeholder="e.g. 9HJI9"></div>
-                <div class="form-group"><label>Flag State *</label><input id="v-flag" value="${vessel?.flag_state||''}" ${disabled} placeholder="e.g. Malta"></div>
-                <div class="form-group"><label>Vessel Type *</label>
-                    <select id="v-type" ${disabled}>${vesselTypes.map(t=>`<option value="${t}" ${vessel?.vessel_type===t?'selected':''}>${t.replace(/_/g,' ')}</option>`).join('')}</select>
-                </div>
-                <div class="form-group"><label>Gross Tonnage</label><input id="v-gt" value="${vessel?.gross_tonnage||''}" ${disabled} placeholder="e.g. 72458"></div>
-                <div class="form-group"><label>Deadweight (T)</label><input id="v-dwt" value="${vessel?.deadweight||''}" ${disabled} placeholder="e.g. 7260"></div>
-                <div class="form-group"><label>Year Built</label><input id="v-year" value="${vessel?.year_built||''}" ${disabled} placeholder="e.g. 1995"></div>
-                <div class="form-group"><label>Owner</label><input id="v-owner" value="${vessel?.owner||''}" ${disabled} placeholder="e.g. TUI Group"></div>
-                <div class="form-group"><label>Operator</label><input id="v-oper" value="${vessel?.operator||''}" ${disabled} placeholder="e.g. Marella Cruises"></div>
-                <div class="form-group"><label>ORB Mode *</label>
-                    <select id="v-mode" ${disabled}>${orbModes.map(([v,l])=>`<option value="${v}" ${vessel?.orb_mode===v?'selected':''}>${l}</option>`).join('')}</select>
-                </div>
-            </div>
-            <div id="vessel-msg"></div>
-            ${isAdmin ? `<div class="form-actions">
-                <button class="btn btn-success" onclick="saveVessel('${vessel?.id||''}')">Save Vessel</button>
-            </div>` : `<p class="perm-note">Only Admin can edit vessel details.</p>`}
-        </div>`;
+  // Part 1 always shown
+  renderOpCodes('part1-codes',PART1_CODES,'part1');
+  renderOpsLeftTanks();
+
+  // Part 2 only for tankers
+  const p2panel=document.getElementById('part2-panel');
+  if(vesselData&&vesselData.requires_part2){
+    p2panel.style.display='block';
+    renderOpCodes('part2-codes',PART2_CODES,'part2');
+  }else{
+    p2panel.style.display='none';
+  }
+
+  // Set current datetime
+  const now=new Date();
+  const local=new Date(now-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  ['p1-date','p2-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=local;});
+
+  // Populate tank selects
+  populateTankSelect('p1-tank',tanksData);
+  populateTankSelect('p2-tank',tanksData.filter(t=>t.tank_type==='cargo'||t.tank_type==='ballast'));
 }
 
-async function saveVessel(vesselId) {
-    const data = {
-        name: document.getElementById('v-name').value,
-        imo_number: document.getElementById('v-imo').value,
-        mmsi: document.getElementById('v-mmsi').value || null,
-        call_sign: document.getElementById('v-call').value || null,
-        flag_state: document.getElementById('v-flag').value,
-        vessel_type: document.getElementById('v-type').value,
-        gross_tonnage: document.getElementById('v-gt').value || null,
-        deadweight: document.getElementById('v-dwt').value || null,
-        year_built: document.getElementById('v-year').value || null,
-        owner: document.getElementById('v-owner').value || null,
-        operator: document.getElementById('v-oper').value || null,
-        orb_mode: document.getElementById('v-mode').value
-    };
-    const res = await api(vesselId ? 'PUT' : 'POST', vesselId ? `/vessel/${vesselId}` : '/vessel/', data);
-    const msg = document.getElementById('vessel-msg');
-    if (res && res.ok) {
-        msg.innerHTML = '<div class="alert alert-success">Vessel saved successfully</div>';
-        setTimeout(() => loadVesselSection(), 1000);
-    } else {
-        const err = await res?.json();
-        msg.innerHTML = `<div class="alert alert-error">${err?.detail||'Save failed'}</div>`;
-    }
+function renderOpsLeftTanks(){
+  const filter=document.getElementById('ops-tank-filter')?.value||'';
+  const filtered=filter?tanksData.filter(t=>t.tank_type===filter):tanksData;
+  renderTankGauges('ops-tanks-panel',filtered,true);
+}
+function filterOpsTanks(){renderOpsLeftTanks();}
+
+function renderOpCodes(containerId,codes,part){
+  const el=document.getElementById(containerId);
+  if(!el)return;
+  el.innerHTML=codes.map(c=>`
+    <div class="op-code" id="${part}-code-${c.code}" onclick="selectCode('${part}','${c.code}')">
+      <strong>${c.code}</strong> — ${c.label}
+    </div>`).join('');
 }
 
-// ─── Users ───────────────────────────────────────────────────────────────────
-async function loadUsers() {
-    const res = await api('GET', '/users/');
-    if (!res || !res.ok) return;
-    const users = await res.json();
-    const isAdmin = currentUser.role === 'admin';
+function selectCode(part,code){
+  const codes=part==='part1'?PART1_CODES:PART2_CODES;
+  const found=codes.find(c=>c.code===code);
+  if(!found)return;
+  document.querySelectorAll(`#${part}-codes .op-code`).forEach(el=>el.classList.remove('active'));
+  document.getElementById(`${part}-code-${code}`)?.classList.add('active');
+  document.getElementById(`${part}-form`).style.display='block';
+  document.getElementById(`${part}-code-desc`).textContent=
+    `Code ${code} — ${found.label}: ${found.desc}`;
+  if(part==='part1')selectedP1Code=code;
+  else selectedP2Code=code;
+}
 
-    document.getElementById('users-container').innerHTML = `
-        <div class="section-header">
-            <div>
-                <h2>Users & Crew</h2>
-                <p class="section-sub">${users.length} users registered</p>
-            </div>
-            ${isAdmin ? `<button class="btn" onclick="showUserModal(null)">+ Add User</button>` : ''}
+function populateTankSelect(selectId,tanks){
+  const el=document.getElementById(selectId);if(!el)return;
+  const groups={};
+  TYPE_ORDER.forEach(t=>groups[t]=[]);
+  tanks.forEach(t=>{const k=t.tank_type in groups?t.tank_type:'other';groups[k].push(t);});
+  let html='<option value="">Select tank...</option>';
+  TYPE_ORDER.forEach(type=>{
+    const grp=groups[type];
+    if(!grp.length)return;
+    html+=`<optgroup label="${TANK_LABELS[type]||type}">`;
+    grp.forEach(t=>html+=`<option value="${t.id}">${t.name} (${t.capacity_m3.toFixed(0)} m³)</option>`);
+    html+='</optgroup>';
+  });
+  el.innerHTML=html;
+}
+
+function clearPart1Form(){
+  ['p1-tank','p1-lat','p1-lon','p1-port','p1-qty','p1-ppm','p1-remarks'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('part1-form').style.display='none';
+  document.querySelectorAll('#part1-codes .op-code').forEach(el=>el.classList.remove('active'));
+  selectedP1Code=null;
+}
+function clearPart2Form(){
+  ['p2-tank','p2-lat','p2-lon','p2-port','p2-cargo','p2-qty','p2-remarks'].forEach(id=>{
+    const el=document.getElementById(id);if(el)el.value='';
+  });
+  document.getElementById('part2-form').style.display='none';
+  document.querySelectorAll('#part2-codes .op-code').forEach(el=>el.classList.remove('active'));
+  selectedP2Code=null;
+}
+
+async function submitPart1(){
+  if(!selectedP1Code){alert('Please select an operation code');return;}
+  const date=document.getElementById('p1-date').value;
+  if(!date){alert('Please enter operation date');return;}
+  // Phase 3: POST to /api/orb/part1
+  alert(`ORB Part I entry ready:\nCode: ${selectedP1Code}\nDate: ${date}\n\nFull submission will be enabled in Phase 3.`);
+}
+async function submitPart2(){
+  if(!selectedP2Code){alert('Please select an operation code');return;}
+  const date=document.getElementById('p2-date').value;
+  if(!date){alert('Please enter operation date');return;}
+  alert(`ORB Part II entry ready:\nCode: ${selectedP2Code}\nDate: ${date}\n\nFull submission will be enabled in Phase 3.`);
+}
+
+// ── Setup: Vessel ─────────────────────────────────────────────────────────────
+async function loadSetupVessel(){
+  const res=await req('GET','/vessel/');
+  let v=null;if(res&&res.ok)v=await res.json();
+  const isAdmin=currentUser.role==='admin';
+  const dis=isAdmin?'':'disabled';
+  const types=[
+    ['passenger','Passenger Ship'],['bulk_carrier','Bulk Carrier'],
+    ['general_cargo','General Cargo'],['container','Container Ship'],
+    ['oil_tanker','Oil Tanker'],['product_tanker','Product Tanker'],
+    ['chemical_tanker','Chemical Tanker'],['oil_barge','Oil Barge'],['other','Other'],
+  ];
+  document.getElementById('setup-vessel').innerHTML=`
+    <div class="form-card">
+      <div class="form-card-header">
+        <h2>Vessel Particulars</h2>
+        ${v?`<span class="badge badge-green">Configured</span>`:`<span class="badge badge-orange">Not Configured</span>`}
+      </div>
+      ${v?`<div class="alert alert-info" style="margin-bottom:14px">
+        ORB Mode auto-assigned: <strong>${v.orb_mode_label}</strong>
+        ${v.requires_part2?' — Part II required (tanker/barge)':' — Part I only (non-tanker)'}
+      </div>`:''}
+      <div class="form-grid-2">
+        <div class="form-group"><label>Vessel Name *</label><input id="v-name" value="${v?.name||''}" ${dis} placeholder="e.g. Marella Explorer 2"></div>
+        <div class="form-group"><label>IMO Number *</label><input id="v-imo" value="${v?.imo_number||''}" ${v?'disabled':dis} placeholder="e.g. 9072446"></div>
+        <div class="form-group"><label>MMSI</label><input id="v-mmsi" value="${v?.mmsi||''}" ${dis} placeholder="e.g. 249054000"></div>
+        <div class="form-group"><label>Call Sign</label><input id="v-call" value="${v?.call_sign||''}" ${dis} placeholder="e.g. 9HJI9"></div>
+        <div class="form-group"><label>Flag State *</label><input id="v-flag" value="${v?.flag_state||''}" ${dis} placeholder="e.g. Malta"></div>
+        <div class="form-group"><label>Vessel Type * (determines ORB mode)</label>
+          <select id="v-type" ${dis} onchange="updateOrbModePreview(this.value)">
+            ${types.map(([val,lbl])=>`<option value="${val}" ${v?.vessel_type===val?'selected':''}>${lbl}</option>`).join('')}
+          </select>
         </div>
-        <div class="table-wrap">
-            <table>
-                <thead><tr>
-                    <th>Full Name</th><th>Username</th><th>Role</th>
-                    <th>Rank</th><th>Certificate</th><th>Status</th>
-                    ${isAdmin ? '<th>Actions</th>' : ''}
-                </tr></thead>
-                <tbody>
-                ${users.map(u => `<tr>
-                    <td><strong>${u.full_name}</strong></td>
-                    <td><code>${u.username}</code></td>
-                    <td><span class="badge badge-blue">${u.role.replace(/_/g,' ')}</span></td>
-                    <td>${u.rank||'-'}</td>
-                    <td>${u.certificate_number||'-'}</td>
-                    <td>${u.is_active ? '<span class="badge badge-green">Active</span>' : '<span class="badge badge-red">Inactive</span>'}</td>
-                    ${isAdmin ? `<td>
-                        <button class="btn btn-sm" onclick='editUser(${JSON.stringify(u)})'>Edit</button>
-                        <button class="btn btn-sm btn-warning" onclick="changePassword('${u.id}','${u.username}')">Password</button>
-                    </td>` : ''}
-                </tr>`).join('')}
-                </tbody>
-            </table>
-        </div>`;
-}
-
-function showUserModal(user) {
-    const roles = ['admin','chief_engineer','second_engineer','third_engineer','officer','master','shore_office','port_authority','viewer'];
-    const isEdit = !!user;
-    openModal(`
-        <h2>${isEdit ? 'Edit User' : 'Add New User'}</h2>
-        <div class="form-grid">
-            <div class="form-group"><label>Full Name *</label><input id="u-name" value="${user?.full_name||''}" placeholder="Full name"></div>
-            <div class="form-group"><label>Username *</label><input id="u-username" value="${user?.username||''}" ${isEdit?'disabled':''} placeholder="login username"></div>
-            ${!isEdit ? `<div class="form-group"><label>Password *</label><input type="password" id="u-password" placeholder="Password"></div>` : ''}
-            <div class="form-group"><label>Role *</label>
-                <select id="u-role">${roles.map(r=>`<option value="${r}" ${user?.role===r?'selected':''}>${r.replace(/_/g,' ')}</option>`).join('')}</select>
-            </div>
-            <div class="form-group"><label>Rank</label><input id="u-rank" value="${user?.rank||''}" placeholder="e.g. Chief Engineer"></div>
-            <div class="form-group"><label>Email</label><input id="u-email" value="${user?.email||''}" placeholder="email@vessel.com"></div>
-            <div class="form-group"><label>Certificate No.</label><input id="u-cert" value="${user?.certificate_number||''}" placeholder="Certificate number"></div>
-            ${isEdit ? `<div class="form-group"><label>Status</label>
-                <select id="u-active"><option value="true" ${user?.is_active?'selected':''}>Active</option><option value="false" ${!user?.is_active?'selected':''}>Inactive</option></select>
-            </div>` : ''}
+        <div class="form-group"><label>Gross Tonnage (GT)</label><input id="v-gt" value="${v?.gross_tonnage||''}" ${dis} placeholder="e.g. 72458"></div>
+        <div class="form-group"><label>Deadweight (T)</label><input id="v-dwt" value="${v?.deadweight||''}" ${dis} placeholder="e.g. 7260"></div>
+        <div class="form-group"><label>Year Built</label><input id="v-year" value="${v?.year_built||''}" ${dis} placeholder="e.g. 1995"></div>
+        <div class="form-group"><label>Owner</label><input id="v-owner" value="${v?.owner||''}" ${dis} placeholder="e.g. TUI Group"></div>
+        <div class="form-group"><label>Operator</label><input id="v-oper" value="${v?.operator||''}" ${dis} placeholder="e.g. Marella Cruises"></div>
+        <div class="form-group"><label>ORB Mode (auto-assigned)</label>
+          <input id="v-mode-display" value="${v?.orb_mode_label||'Will be set based on vessel type'}" disabled style="background:#f0f4f8;color:#555">
         </div>
-        <div class="modal-actions">
-            <button class="btn btn-grey" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveUser('${user?.id||''}')">Save User</button>
-        </div>
-    `);
+      </div>
+      <div id="vessel-msg"></div>
+      ${isAdmin?`<div class="form-actions">
+        <button class="btn btn-primary" onclick="saveVessel('${v?.id||''}')">Save Vessel</button>
+      </div>`:`<p class="perm-note">Only Admin can edit vessel details.</p>`}
+    </div>`;
 }
 
-function editUser(user) { showUserModal(user); }
-
-async function saveUser(userId) {
-    const data = {
-        full_name: document.getElementById('u-name').value,
-        role: document.getElementById('u-role').value,
-        rank: document.getElementById('u-rank').value || null,
-        email: document.getElementById('u-email').value || null,
-        certificate_number: document.getElementById('u-cert').value || null,
-    };
-    if (userId) {
-        const activeEl = document.getElementById('u-active');
-        if (activeEl) data.is_active = activeEl.value === 'true';
-    } else {
-        data.username = document.getElementById('u-username').value;
-        data.password = document.getElementById('u-password').value;
-    }
-    const res = await api(userId ? 'PUT' : 'POST', userId ? `/users/${userId}` : '/users/', data);
-    if (res && res.ok) { closeModal(); loadUsers(); }
-    else {
-        const err = await res?.json();
-        showModalError(err?.detail || 'Save failed');
-    }
+function updateOrbModePreview(type){
+  const tankerTypes=['oil_tanker','product_tanker','chemical_tanker','oil_barge'];
+  const isTanker=tankerTypes.includes(type);
+  const el=document.getElementById('v-mode-display');
+  if(el)el.value=isTanker?'Part I + Part II — Tanker Operations':'Part I — Machinery Space Only';
 }
 
-function changePassword(userId, username) {
-    openModal(`
-        <h2>Change Password</h2>
-        <p style="color:#666;margin-bottom:1rem">User: <strong>${username}</strong></p>
-        <div class="form-group"><label>New Password *</label><input type="password" id="new-pwd" placeholder="New password"></div>
-        <div class="form-group"><label>Confirm Password *</label><input type="password" id="confirm-pwd" placeholder="Confirm password"></div>
-        <div class="modal-actions">
-            <button class="btn btn-grey" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="savePassword('${userId}')">Change Password</button>
-        </div>
-    `);
+async function saveVessel(vesselId){
+  const data={
+    name:document.getElementById('v-name').value,
+    imo_number:document.getElementById('v-imo').value,
+    mmsi:document.getElementById('v-mmsi').value||null,
+    call_sign:document.getElementById('v-call').value||null,
+    flag_state:document.getElementById('v-flag').value,
+    vessel_type:document.getElementById('v-type').value,
+    gross_tonnage:document.getElementById('v-gt').value||null,
+    deadweight:document.getElementById('v-dwt').value||null,
+    year_built:document.getElementById('v-year').value||null,
+    owner:document.getElementById('v-owner').value||null,
+    operator:document.getElementById('v-oper').value||null,
+  };
+  const res=await req(vesselId?'PUT':'POST',vesselId?`/vessel/${vesselId}`:'/vessel/',data);
+  const msg=document.getElementById('vessel-msg');
+  if(res&&res.ok){
+    msg.innerHTML='<div class="alert alert-success">Vessel saved successfully</div>';
+    await loadVessel();setTimeout(()=>loadSetupVessel(),1000);
+  }else{
+    const err=await res?.json();
+    msg.innerHTML=`<div class="alert alert-error">${err?.detail||'Save failed'}</div>`;
+  }
 }
 
-async function savePassword(userId) {
-    const pwd = document.getElementById('new-pwd').value;
-    const confirm = document.getElementById('confirm-pwd').value;
-    if (pwd !== confirm) { showModalError('Passwords do not match'); return; }
-    if (pwd.length < 6) { showModalError('Password must be at least 6 characters'); return; }
-    const res = await api('PUT', `/users/${userId}/password`, { new_password: pwd });
-    if (res && res.ok) { closeModal(); alert('Password changed successfully'); }
-    else { const err = await res?.json(); showModalError(err?.detail || 'Failed'); }
+// ── Setup: Users ──────────────────────────────────────────────────────────────
+async function loadSetupUsers(){
+  const res=await req('GET','/users/');
+  if(!res||!res.ok)return;
+  const users=await res.json();
+  const isAdmin=currentUser.role==='admin';
+  document.getElementById('setup-users').innerHTML=`
+    <div class="form-card">
+      <div class="section-actions">
+        <h2>Users &amp; Crew (${users.length})</h2>
+        ${isAdmin?`<button class="btn btn-primary btn-sm" onclick="showUserModal(null)">+ Add User</button>`:''}
+      </div>
+      <div class="table-wrap" style="overflow-x:auto">
+        <table class="data-table">
+          <thead><tr><th>Name</th><th>Username</th><th>Role</th><th>Rank</th><th>Certificate</th><th>Status</th>${isAdmin?'<th>Actions</th>':''}</tr></thead>
+          <tbody>${users.map(u=>`<tr>
+            <td><strong>${u.full_name}</strong></td>
+            <td><code>${u.username}</code></td>
+            <td><span class="badge badge-blue">${u.role.replace(/_/g,' ')}</span></td>
+            <td>${u.rank||'-'}</td>
+            <td>${u.certificate_number||'-'}</td>
+            <td>${u.is_active?'<span class="badge badge-green">Active</span>':'<span class="badge badge-red">Inactive</span>'}</td>
+            ${isAdmin?`<td style="display:flex;gap:4px">
+              <button class="btn btn-sm btn-secondary" onclick='showUserModal(${JSON.stringify(u)})'>Edit</button>
+              <button class="btn btn-sm btn-secondary" onclick="showPwdModal('${u.id}','${u.username}')">Pwd</button>
+            </td>`:''}
+          </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
 }
 
-// ─── Tanks ───────────────────────────────────────────────────────────────────
-async function loadTanks() {
-    const [tRes, vRes] = await Promise.all([api('GET','/tanks/'), api('GET','/vessel/')]);
-    if (!tRes || !tRes.ok) return;
-    const tanks = await tRes.json();
-    const vessel = vRes && vRes.ok ? await vRes.json() : null;
-    const isAdmin = currentUser.role === 'admin';
-
-    // Group by type
-    const groups = {};
-    const typeOrder = ['fuel_oil','diesel_oil','lubricating_oil','bilge','slop','ballast','cargo','fresh_water','other'];
-    typeOrder.forEach(t => groups[t] = []);
-    tanks.forEach(t => { if (groups[t.tank_type]) groups[t.tank_type].push(t); else groups['other'].push(t); });
-
-    const totalCap = tanks.reduce((s,t) => s+t.capacity_m3, 0);
-
-    let html = `
-        <div class="section-header">
-            <div>
-                <h2>Tank Management</h2>
-                <p class="section-sub">${tanks.length} tanks — Total capacity: ${totalCap.toFixed(1)} m³</p>
-            </div>
-            ${isAdmin && vessel ? `<button class="btn" onclick="showTankModal('${vessel.id}')">+ Add Tank</button>` : ''}
-        </div>`;
-
-    typeOrder.forEach(type => {
-        const group = groups[type];
-        if (!group.length) return;
-        const groupCap = group.reduce((s,t) => s+t.capacity_m3, 0);
-        const label = type.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
-        html += `
-            <div class="tank-group">
-                <div class="tank-group-header">
-                    <span class="tank-group-title">${label} Tanks</span>
-                    <span class="tank-group-sub">${group.length} tanks — ${groupCap.toFixed(1)} m³ total</span>
-                </div>
-                <div class="table-wrap">
-                    <table>
-                        <thead><tr><th>Tank Name</th><th>Capacity (m³)</th><th>Position</th><th>Frames</th><th>Ext. System ID</th>${isAdmin?'<th>Actions</th>':''}</tr></thead>
-                        <tbody>
-                        ${group.map(t => `<tr>
-                            <td><strong>${t.name}</strong></td>
-                            <td>${t.capacity_m3.toFixed(2)}</td>
-                            <td>${t.position ? `<span class="badge badge-grey">${t.position}</span>` : '-'}</td>
-                            <td>${t.frame_from||'-'} — ${t.frame_to||'-'}</td>
-                            <td><code>${t.external_system_id||'-'}</code></td>
-                            ${isAdmin ? `<td><button class="btn btn-sm btn-danger" onclick="removeTank('${t.id}','${t.name}')">Remove</button></td>` : ''}
-                        </tr>`).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            </div>`;
-    });
-
-    document.getElementById('tanks-container').innerHTML = html;
+async function loadSetupTanks(){
+  const [tRes,vRes]=await Promise.all([req('GET','/tanks/'),req('GET','/vessel/')]);
+  const tanks=tRes&&tRes.ok?await tRes.json():[];
+  const vessel=vRes&&vRes.ok?await vRes.json():null;
+  const isAdmin=currentUser.role==='admin';
+  const groups={};TYPE_ORDER.forEach(t=>groups[t]=[]);
+  tanks.forEach(t=>{const k=t.tank_type in groups?t.tank_type:'other';groups[k].push(t);});
+  let html=`<div class="form-card"><div class="section-actions">
+    <h2>Tanks (${tanks.length} — ${Math.round(tanks.reduce((s,t)=>s+t.capacity_m3,0))} m³ total)</h2>
+    ${isAdmin&&vessel?`<button class="btn btn-primary btn-sm" onclick="showTankModal('${vessel.id}')">+ Add Tank</button>`:''}
+  </div>`;
+  TYPE_ORDER.forEach(type=>{
+    const grp=groups[type];if(!grp.length)return;
+    const cap=grp.reduce((s,t)=>s+t.capacity_m3,0);
+    html+=`<div class="tank-group-label">${TANK_LABELS[type]||type} — ${grp.length} tanks — ${cap.toFixed(0)} m³</div>
+    <div style="overflow-x:auto"><table class="data-table" style="margin-bottom:8px">
+      <thead><tr><th>Tank Name</th><th>Capacity m³</th><th>Position</th><th>Frames</th><th>Ext. ID</th>${isAdmin?'<th>Actions</th>':''}</tr></thead>
+      <tbody>${grp.map(t=>`<tr>
+        <td><strong>${t.name}</strong></td>
+        <td>${t.capacity_m3.toFixed(2)}</td>
+        <td>${t.position?`<span class="badge badge-grey">${t.position}</span>`:'-'}</td>
+        <td>${t.frame_from||'-'} — ${t.frame_to||'-'}</td>
+        <td><code>${t.external_system_id||'-'}</code></td>
+        ${isAdmin?`<td><button class="btn btn-sm btn-danger" onclick="removeTank('${t.id}','${t.name}')">Remove</button></td>`:''}
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  });
+  html+='</div>';
+  document.getElementById('setup-tanks').innerHTML=html;
 }
 
-function showTankModal(vesselId) {
-    const types = ['fuel_oil','diesel_oil','lubricating_oil','ballast','slop','bilge','cargo','fresh_water','other'];
-    openModal(`
-        <h2>Add Tank</h2>
-        <div class="form-grid">
-            <div class="form-group"><label>Tank Name *</label><input id="t-name" placeholder="e.g. HFO Tank Port FWD"></div>
-            <div class="form-group"><label>Tank Type *</label>
-                <select id="t-type">${types.map(t=>`<option value="${t}">${t.replace(/_/g,' ')}</option>`).join('')}</select>
-            </div>
-            <div class="form-group"><label>Capacity (m³) *</label><input type="number" step="0.01" id="t-cap" placeholder="e.g. 850.00"></div>
-            <div class="form-group"><label>Position</label>
-                <select id="t-pos"><option value="">-</option><option value="port">Port</option><option value="starboard">Starboard</option><option value="center">Center</option></select>
-            </div>
-            <div class="form-group"><label>Frame From</label><input id="t-ff" placeholder="e.g. 20"></div>
-            <div class="form-group"><label>Frame To</label><input id="t-ft" placeholder="e.g. 45"></div>
-            <div class="form-group"><label>External System ID</label><input id="t-ext" placeholder="Valmarine / Kongsberg / NAPA ID"></div>
-        </div>
-        <div class="modal-actions">
-            <button class="btn btn-grey" onclick="closeModal()">Cancel</button>
-            <button class="btn btn-success" onclick="saveTank('${vesselId}')">Add Tank</button>
-        </div>
-    `);
+function showSetupSection(name){
+  ['vessel','users','tanks'].forEach(s=>{
+    const el=document.getElementById(`setup-${s}`);if(el)el.style.display=s===name?'block':'none';
+  });
+  document.querySelectorAll('.setup-nav-item').forEach(el=>el.classList.remove('active'));
+  const items=document.querySelectorAll('.setup-nav-item');
+  const idx={vessel:0,users:1,tanks:2}[name]??0;
+  if(items[idx])items[idx].classList.add('active');
+  if(name==='vessel')loadSetupVessel();
+  if(name==='users')loadSetupUsers();
+  if(name==='tanks')loadSetupTanks();
 }
 
-async function saveTank(vesselId) {
-    const data = {
-        vessel_id: vesselId,
-        name: document.getElementById('t-name').value,
-        tank_type: document.getElementById('t-type').value,
-        capacity_m3: parseFloat(document.getElementById('t-cap').value),
-        position: document.getElementById('t-pos').value || null,
-        frame_from: document.getElementById('t-ff').value || null,
-        frame_to: document.getElementById('t-ft').value || null,
-        external_system_id: document.getElementById('t-ext').value || null,
-    };
-    if (!data.name || !data.capacity_m3) { showModalError('Name and capacity are required'); return; }
-    const res = await api('POST', '/tanks/', data);
-    if (res && res.ok) { closeModal(); loadTanks(); }
-    else { const err = await res?.json(); showModalError(err?.detail || 'Save failed'); }
+// ── User Modal ────────────────────────────────────────────────────────────────
+function showUserModal(user){
+  const roles=['admin','chief_engineer','second_engineer','third_engineer','officer','master','shore_office','port_authority','viewer'];
+  const isEdit=!!user;
+  openModal(`<h2>${isEdit?'Edit User':'Add User'}</h2>
+    <div class="form-grid-2">
+      <div class="form-group"><label>Full Name *</label><input id="u-name" value="${user?.full_name||''}" placeholder="Full name"></div>
+      <div class="form-group"><label>Username *</label><input id="u-username" value="${user?.username||''}" ${isEdit?'disabled':''} placeholder="username"></div>
+      ${!isEdit?`<div class="form-group"><label>Password *</label><input type="password" id="u-password" placeholder="Password"></div>`:''}
+      <div class="form-group"><label>Role *</label><select id="u-role">${roles.map(r=>`<option value="${r}" ${user?.role===r?'selected':''}>${r.replace(/_/g,' ')}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Rank</label><input id="u-rank" value="${user?.rank||''}" placeholder="e.g. Chief Engineer"></div>
+      <div class="form-group"><label>Email</label><input id="u-email" value="${user?.email||''}" placeholder="email@vessel.com"></div>
+      <div class="form-group"><label>Certificate No.</label><input id="u-cert" value="${user?.certificate_number||''}" placeholder="Cert number"></div>
+      ${isEdit?`<div class="form-group"><label>Status</label><select id="u-active"><option value="true" ${user?.is_active?'selected':''}>Active</option><option value="false" ${!user?.is_active?'selected':''}>Inactive</option></select></div>`:''}
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveUser('${user?.id||''}')">Save</button>
+    </div>`);
 }
 
-async function removeTank(tankId, tankName) {
-    if (!confirm(`Remove tank "${tankName}"? This cannot be undone.`)) return;
-    const res = await api('DELETE', `/tanks/${tankId}`);
-    if (res && res.ok) loadTanks();
+async function saveUser(userId){
+  const data={full_name:document.getElementById('u-name').value,role:document.getElementById('u-role').value,rank:document.getElementById('u-rank').value||null,email:document.getElementById('u-email').value||null,certificate_number:document.getElementById('u-cert').value||null};
+  if(userId){const a=document.getElementById('u-active');if(a)data.is_active=a.value==='true';}
+  else{data.username=document.getElementById('u-username').value;data.password=document.getElementById('u-password').value;}
+  const res=await req(userId?'PUT':'POST',userId?`/users/${userId}`:'/users/',data);
+  if(res&&res.ok){closeModal();loadSetupUsers();}
+  else{const err=await res?.json();showModalAlert(err?.detail||'Failed');}
 }
 
-// ─── Modal ───────────────────────────────────────────────────────────────────
-function openModal(html) {
-    closeModal();
-    document.body.insertAdjacentHTML('beforeend', `
-        <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
-            <div class="modal" id="modal-box">
-                <div id="modal-error" class="alert alert-error" style="display:none"></div>
-                ${html}
-            </div>
-        </div>`);
+function showPwdModal(userId,username){
+  openModal(`<h2>Change Password</h2>
+    <p style="color:#888;margin-bottom:14px">User: <strong>${username}</strong></p>
+    <div class="form-group"><label>New Password *</label><input type="password" id="new-pwd" placeholder="Min 6 characters"></div>
+    <div class="form-group"><label>Confirm Password *</label><input type="password" id="conf-pwd" placeholder="Repeat password"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="savePwd('${userId}')">Change Password</button>
+    </div>`);
+}
+async function savePwd(userId){
+  const p=document.getElementById('new-pwd').value;
+  const c=document.getElementById('conf-pwd').value;
+  if(p!==c){showModalAlert('Passwords do not match');return;}
+  if(p.length<6){showModalAlert('Minimum 6 characters');return;}
+  const res=await req('PUT',`/users/${userId}/password`,{new_password:p});
+  if(res&&res.ok){closeModal();alert('Password changed successfully');}
+  else{const err=await res?.json();showModalAlert(err?.detail||'Failed');}
 }
 
-function closeModal() { document.getElementById('modal-overlay')?.remove(); }
-function handleOverlayClick(e) { if (e.target.id === 'modal-overlay') closeModal(); }
-function showModalError(msg) { const d = document.getElementById('modal-error'); if(d){d.textContent=msg;d.style.display='block';} }
+// ── Tank Modal ────────────────────────────────────────────────────────────────
+function showTankModal(vesselId){
+  const types=TYPE_ORDER;
+  openModal(`<h2>Add Tank</h2>
+    <div class="form-grid-2">
+      <div class="form-group"><label>Tank Name *</label><input id="t-name" placeholder="e.g. HFO Tank Port FWD"></div>
+      <div class="form-group"><label>Tank Type *</label><select id="t-type">${types.map(t=>`<option value="${t}">${TANK_LABELS[t]||t}</option>`).join('')}</select></div>
+      <div class="form-group"><label>Capacity (m³) *</label><input type="number" step="0.01" id="t-cap" placeholder="e.g. 850.00"></div>
+      <div class="form-group"><label>Position</label><select id="t-pos"><option value="">-</option><option value="port">Port</option><option value="starboard">Starboard</option><option value="center">Center</option></select></div>
+      <div class="form-group"><label>Frame From</label><input id="t-ff" placeholder="e.g. 20"></div>
+      <div class="form-group"><label>Frame To</label><input id="t-ft" placeholder="e.g. 45"></div>
+      <div class="form-group"><label>External System ID</label><input id="t-ext" placeholder="Valmarine / Kongsberg / NAPA ID"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTank('${vesselId}')">Add Tank</button>
+    </div>`);
+}
+async function saveTank(vesselId){
+  const data={vessel_id:vesselId,name:document.getElementById('t-name').value,tank_type:document.getElementById('t-type').value,capacity_m3:parseFloat(document.getElementById('t-cap').value),position:document.getElementById('t-pos').value||null,frame_from:document.getElementById('t-ff').value||null,frame_to:document.getElementById('t-ft').value||null,external_system_id:document.getElementById('t-ext').value||null};
+  if(!data.name||!data.capacity_m3){showModalAlert('Name and capacity required');return;}
+  const res=await req('POST','/tanks/',data);
+  if(res&&res.ok){closeModal();await loadTanks();loadSetupTanks();}
+  else{const err=await res?.json();showModalAlert(err?.detail||'Failed');}
+}
+async function removeTank(id,name){
+  if(!confirm(`Remove tank "${name}"?`))return;
+  const res=await req('DELETE',`/tanks/${id}`);
+  if(res&&res.ok){await loadTanks();loadSetupTanks();}
+}
 
-// ─── Init ────────────────────────────────────────────────────────────────────
-document.addEventListener('keydown', e => {
-    if (e.key === 'Enter' && document.getElementById('login-screen')?.style.display !== 'none') login();
-    if (e.key === 'Escape') closeModal();
+// ── Audit Log ─────────────────────────────────────────────────────────────────
+async function loadAuditLog(){
+  document.getElementById('audit-entries').innerHTML='<tr><td colspan="5" class="empty-row">Loading...</td></tr>';
+  // Phase 3: GET /api/audit/
+  document.getElementById('audit-entries').innerHTML='<tr><td colspan="5" class="empty-row">Audit log API coming in Phase 3 — all actions are already being recorded in the database.</td></tr>';
+}
+
+// ── Modal Helpers ─────────────────────────────────────────────────────────────
+function openModal(html){
+  closeModal();
+  document.getElementById('modal-box').innerHTML=html;
+  document.getElementById('modal-overlay').style.display='flex';
+}
+function closeModal(){document.getElementById('modal-overlay').style.display='none';}
+function handleOverlay(e){if(e.target.id==='modal-overlay')closeModal();}
+function showModalAlert(msg){
+  let a=document.getElementById('modal-alert');
+  if(!a){a=document.createElement('div');a.id='modal-alert';a.className='alert alert-error';document.getElementById('modal-box').prepend(a);}
+  a.textContent=msg;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='Enter'&&document.getElementById('login-screen')?.style.display!=='none')login();
+  if(e.key==='Escape')closeModal();
 });
-
-if (token && currentUser) showApp();
+if(token&&currentUser)showApp();

@@ -1,122 +1,261 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyORB - Oil Record Book System</title>
-    <link rel="stylesheet" href="/static/css/main.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PyORB - Oil Record Book System</title>
+<link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
 
 <!-- LOGIN -->
 <div id="login-screen" class="login-screen">
-    <div class="login-box">
-        <div class="login-logo">&#9875;</div>
-        <h1>PyORB</h1>
-        <p class="login-subtitle">Oil Record Book System</p>
-        <p class="marpol-badge">MARPOL Annex I Compliant</p>
-        <div id="login-error" class="alert alert-error" style="display:none"></div>
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" id="username" placeholder="Enter username" autocomplete="username">
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
-        </div>
-        <button class="btn btn-full" onclick="login()">Login</button>
-        <p class="login-hint">Default: admin / admin123</p>
-    </div>
+  <div class="login-box">
+    <div class="login-logo">&#9875;</div>
+    <h1>PyORB</h1>
+    <p class="login-sub">Oil Record Book System</p>
+    <p class="marpol-badge">MARPOL Annex I Compliant</p>
+    <div id="login-error" class="alert alert-error" style="display:none"></div>
+    <div class="form-group"><label>Username</label><input type="text" id="username" placeholder="Enter username" autocomplete="username"></div>
+    <div class="form-group"><label>Password</label><input type="password" id="password" placeholder="Enter password" autocomplete="current-password"></div>
+    <button class="btn btn-full" onclick="login()">Login</button>
+    <p class="login-hint">Default: admin / admin123</p>
+  </div>
 </div>
 
 <!-- APP -->
 <div id="app" style="display:none">
-    <nav class="navbar">
-        <div class="nav-brand">&#9875; PyORB</div>
-        <div class="nav-links">
-            <a href="#" data-section="dashboard" onclick="showSection('dashboard')">Dashboard</a>
-            <a href="#" data-section="vessel"    onclick="showSection('vessel')">Vessel</a>
-            <a href="#" data-section="users"     onclick="showSection('users')">Users</a>
-            <a href="#" data-section="tanks"     onclick="showSection('tanks')">Tanks</a>
-            <a href="/api/docs" target="_blank">API Docs</a>
-        </div>
-        <div class="nav-user">
-            <span id="nav-username"></span>
-            <span id="nav-role" class="role-badge"></span>
-            <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
-        </div>
-    </nav>
 
-    <main class="container">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-brand">&#9875; PyORB</div>
+    <div class="topbar-vessel" id="topbar-vessel">
+      <span id="topbar-vesselname">-</span>
+      <span id="topbar-vesselinfo" class="topbar-vesselinfo">Loading...</span>
+    </div>
+    <div class="topbar-badges">
+      <span id="topbar-mode" class="topbar-badge"></span>
+    </div>
+    <div class="topbar-user">
+      <div id="topbar-avatar" class="topbar-avatar">?</div>
+      <div class="topbar-userinfo">
+        <span id="topbar-username"></span>
+        <span id="topbar-role"></span>
+      </div>
+      <button class="btn-logout" onclick="logout()">Logout</button>
+    </div>
+  </div>
 
-        <!-- DASHBOARD -->
-        <div id="section-dashboard">
-            <div class="page-header">
-                <h1>Dashboard</h1>
-                <p class="subtitle">MARPOL Annex I Compliant Oil Record Book</p>
+  <!-- MAIN TABS -->
+  <div class="maintabs">
+    <button class="maintab active" data-tab="dashboard" onclick="switchTab('dashboard')">&#128202; Dashboard</button>
+    <button class="maintab" data-tab="operations" onclick="switchTab('operations')">&#128203; Operations</button>
+    <button class="maintab" data-tab="setup" onclick="switchTab('setup')">&#9881; Setup</button>
+    <button class="maintab" data-tab="reports" onclick="switchTab('reports')">&#128196; Reports</button>
+    <button class="maintab" data-tab="audit" onclick="switchTab('audit')">&#128269; Audit Log</button>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="app-body">
+
+    <!-- DASHBOARD TAB -->
+    <div id="tab-dashboard" class="tab-content active">
+      <div class="page-header">
+        <h1>Dashboard</h1>
+        <p class="page-sub">Tank status overview and recent ORB entries</p>
+      </div>
+      <div id="dash-stats" class="stats-row"></div>
+      <div id="dash-tanks"></div>
+      <div class="panel" style="margin-top:20px">
+        <div class="panel-header">Recent ORB Entries</div>
+        <div class="panel-body">
+          <table class="data-table">
+            <thead><tr><th>Date</th><th>Code</th><th>Operation</th><th>Tank</th><th>Quantity</th><th>Officer</th><th>Status</th></tr></thead>
+            <tbody id="recent-entries"><tr><td colspan="7" class="empty-row">No entries yet — use Operations tab to record</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPERATIONS TAB -->
+    <div id="tab-operations" class="tab-content" style="display:none">
+      <div class="page-header">
+        <h1>Operations</h1>
+        <p class="page-sub" id="ops-sub">Record ORB operations</p>
+      </div>
+      <div class="ops-layout">
+        <!-- Left: Tank gauges -->
+        <div class="ops-left">
+          <div class="panel">
+            <div class="panel-header">Tank Status
+              <select id="ops-tank-filter" onchange="filterOpsTanks()" style="font-size:11px;padding:2px 6px;border-radius:4px;border:0.5px solid var(--border);margin-left:8px">
+                <option value="">All types</option>
+                <option value="fuel_oil">Fuel Oil</option>
+                <option value="diesel_oil">Diesel / MGO</option>
+                <option value="lubricating_oil">Lubricating Oil</option>
+                <option value="bilge">Bilge</option>
+                <option value="slop">Slop</option>
+                <option value="ballast">Ballast</option>
+                <option value="cargo">Cargo</option>
+                <option value="fresh_water">Fresh Water</option>
+              </select>
             </div>
-            <div id="vessel-summary" class="vessel-banner"></div>
-            <div id="dash-stats" class="stats-row"></div>
-            <div class="cards">
-                <div class="card card-blue">
-                    <div class="card-icon">&#128203;</div>
-                    <h3>ORB Part I</h3>
-                    <p>Machinery Space Operations</p>
-                    <small>Codes A through I</small>
-                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+            <div class="panel-body" id="ops-tanks-panel"></div>
+          </div>
+        </div>
+
+        <!-- Right: Entry form -->
+        <div class="ops-right">
+          <div id="part1-panel" class="panel">
+            <div class="panel-header">&#128203; ORB Part I — Machinery Space Entry</div>
+            <div class="panel-body">
+              <div class="op-codes-label">Select Operation Code</div>
+              <div class="op-codes" id="part1-codes"></div>
+              <div id="part1-form" style="display:none">
+                <div class="form-divider"></div>
+                <div class="form-row-2">
+                  <div class="form-group"><label>Operation Date *</label><input type="datetime-local" id="p1-date"></div>
+                  <div class="form-group"><label>Tank</label><select id="p1-tank"><option value="">Select tank...</option></select></div>
                 </div>
-                <div class="card card-green">
-                    <div class="card-icon">&#128674;</div>
-                    <h3>ORB Part II</h3>
-                    <p>Cargo and Ballast Operations</p>
-                    <small>Codes A through G</small>
-                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+                <div class="form-row-3">
+                  <div class="form-group"><label>Latitude</label><input type="text" id="p1-lat" placeholder="e.g. 35.6892 N"></div>
+                  <div class="form-group"><label>Longitude</label><input type="text" id="p1-lon" placeholder="e.g. 14.3754 E"></div>
+                  <div class="form-group"><label>Port (if in port)</label><input type="text" id="p1-port" placeholder="Port name"></div>
                 </div>
-                <div class="card card-orange">
-                    <div class="card-icon">&#128202;</div>
-                    <h3>Reports</h3>
-                    <p>Export and Statistics</p>
-                    <small>PDF, Excel, CSV</small>
-                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+                <div class="form-row-2">
+                  <div class="form-group"><label>Quantity (m³)</label><input type="number" step="0.01" id="p1-qty" placeholder="0.00"></div>
+                  <div class="form-group"><label>Oil Content (PPM)</label><input type="number" step="0.1" id="p1-ppm" placeholder="OWS reading"></div>
                 </div>
-                <div class="card card-red">
-                    <div class="card-icon">&#128269;</div>
-                    <h3>Audit Log</h3>
-                    <p>Full Operation History</p>
-                    <small>Complete investigation trail</small>
-                    <br><span class="badge badge-orange" style="margin-top:0.8rem">Coming in Phase 3</span>
+                <div class="form-group"><label>Remarks</label><textarea id="p1-remarks" rows="2" placeholder="Additional details, references, etc."></textarea></div>
+                <div id="p1-code-desc" class="code-desc"></div>
+                <div class="form-actions">
+                  <button class="btn btn-secondary" onclick="clearPart1Form()">Clear</button>
+                  <button class="btn btn-primary" onclick="submitPart1()">&#10003; Submit ORB Entry</button>
                 </div>
+              </div>
             </div>
-        </div>
+          </div>
 
-        <!-- VESSEL -->
-        <div id="section-vessel" style="display:none">
-            <div class="page-header">
-                <h1>Vessel Setup</h1>
-                <p class="subtitle">Configure vessel particulars and ORB mode</p>
+          <div id="part2-panel" class="panel" style="display:none;margin-top:16px">
+            <div class="panel-header">&#128674; ORB Part II — Cargo / Ballast Entry</div>
+            <div class="panel-body">
+              <div class="op-codes-label">Select Operation Code</div>
+              <div class="op-codes" id="part2-codes"></div>
+              <div id="part2-form" style="display:none">
+                <div class="form-divider"></div>
+                <div class="form-row-2">
+                  <div class="form-group"><label>Operation Date *</label><input type="datetime-local" id="p2-date"></div>
+                  <div class="form-group"><label>Tank</label><select id="p2-tank"><option value="">Select tank...</option></select></div>
+                </div>
+                <div class="form-row-3">
+                  <div class="form-group"><label>Latitude</label><input type="text" id="p2-lat" placeholder="e.g. 35.6892 N"></div>
+                  <div class="form-group"><label>Longitude</label><input type="text" id="p2-lon" placeholder="e.g. 14.3754 E"></div>
+                  <div class="form-group"><label>Port (if in port)</label><input type="text" id="p2-port" placeholder="Port name"></div>
+                </div>
+                <div class="form-row-2">
+                  <div class="form-group"><label>Cargo Type</label><input type="text" id="p2-cargo" placeholder="e.g. Crude Oil"></div>
+                  <div class="form-group"><label>Quantity (m³)</label><input type="number" step="0.01" id="p2-qty" placeholder="0.00"></div>
+                </div>
+                <div class="form-group"><label>Remarks</label><textarea id="p2-remarks" rows="2" placeholder="Additional details"></textarea></div>
+                <div id="p2-code-desc" class="code-desc"></div>
+                <div class="form-actions">
+                  <button class="btn btn-secondary" onclick="clearPart2Form()">Clear</button>
+                  <button class="btn btn-primary" onclick="submitPart2()">&#10003; Submit ORB Entry</button>
+                </div>
+              </div>
             </div>
-            <div id="vessel-form-container"></div>
+          </div>
         </div>
+      </div>
+    </div>
 
-        <!-- USERS -->
-        <div id="section-users" style="display:none">
-            <div class="page-header">
-                <h1>User Management</h1>
-                <p class="subtitle">Manage crew members and access roles</p>
-            </div>
-            <div id="users-container"></div>
+    <!-- SETUP TAB -->
+    <div id="tab-setup" class="tab-content" style="display:none">
+      <div class="setup-layout">
+        <div class="setup-sidebar">
+          <div class="setup-nav-item active" onclick="showSetupSection('vessel')">&#9875; Vessel Particulars</div>
+          <div class="setup-nav-item" onclick="showSetupSection('users')">&#128100; Users & Crew</div>
+          <div class="setup-nav-item" onclick="showSetupSection('tanks')">&#128674; Tank Configuration</div>
         </div>
-
-        <!-- TANKS -->
-        <div id="section-tanks" style="display:none">
-            <div class="page-header">
-                <h1>Tank Management</h1>
-                <p class="subtitle">Vessel tank inventory and specifications</p>
-            </div>
-            <div id="tanks-container"></div>
+        <div class="setup-main">
+          <div id="setup-vessel"></div>
+          <div id="setup-users" style="display:none"></div>
+          <div id="setup-tanks" style="display:none"></div>
         </div>
+      </div>
+    </div>
 
-    </main>
+    <!-- REPORTS TAB -->
+    <div id="tab-reports" class="tab-content" style="display:none">
+      <div class="page-header">
+        <h1>Reports &amp; Exports</h1>
+        <p class="page-sub">Generate official ORB reports and export data</p>
+      </div>
+      <div class="reports-grid">
+        <div class="report-card">
+          <div class="report-icon">&#128196;</div>
+          <h3>ORB Part I — PDF</h3>
+          <p>Official Oil Record Book Part I in MARPOL format</p>
+          <div class="form-group" style="margin-top:12px"><label>Date From</label><input type="date" id="rep-p1-from"></div>
+          <div class="form-group"><label>Date To</label><input type="date" id="rep-p1-to"></div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('PDF export coming in Phase 3')">Export PDF</button>
+        </div>
+        <div class="report-card">
+          <div class="report-icon">&#128202;</div>
+          <h3>Statistics &amp; Analysis</h3>
+          <p>Fuel consumption, operations by port, operator activity</p>
+          <div class="form-group" style="margin-top:12px"><label>Period</label>
+            <select id="rep-period">
+              <option>Last 7 days</option><option>Last 30 days</option>
+              <option>Last 3 months</option><option>This year</option><option>Custom</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('Statistics coming in Phase 3')">Generate Report</button>
+        </div>
+        <div class="report-card">
+          <div class="report-icon">&#128200;</div>
+          <h3>Excel / CSV Export</h3>
+          <p>Export all ORB entries to Excel or CSV format</p>
+          <div class="form-group" style="margin-top:12px"><label>Format</label>
+            <select><option>Excel (.xlsx)</option><option>CSV</option></select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('Excel export coming in Phase 3')">Export</button>
+        </div>
+        <div class="report-card">
+          <div class="report-icon">&#128190;</div>
+          <h3>Database Backup</h3>
+          <p>Export complete database for archiving or transfer</p>
+          <div class="form-group" style="margin-top:12px"><label>Format</label>
+            <select><option>PostgreSQL dump (.sql)</option><option>JSON</option></select>
+          </div>
+          <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="alert('DB export coming in Phase 3')">Export DB</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- AUDIT LOG TAB -->
+    <div id="tab-audit" class="tab-content" style="display:none">
+      <div class="page-header">
+        <h1>Audit Log</h1>
+        <p class="page-sub">Complete record of all system operations for investigation</p>
+      </div>
+      <div class="panel">
+        <div class="panel-header">All Operations</div>
+        <div class="panel-body">
+          <table class="data-table">
+            <thead><tr><th>Timestamp</th><th>User</th><th>Action</th><th>Table</th><th>Description</th></tr></thead>
+            <tbody id="audit-entries"><tr><td colspan="5" class="empty-row">Loading audit log...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay" style="display:none" onclick="handleOverlay(event)">
+  <div class="modal" id="modal-box"></div>
 </div>
 
 <script src="/static/js/main.js"></script>
