@@ -2,7 +2,7 @@
 PyORB Database Connection
 PostgreSQL via SQLAlchemy - internal access only
 """
-from sqlalchemy import create_engine, event
+from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from app.config import settings
@@ -32,7 +32,15 @@ def get_db():
 
 
 def init_db():
-    """Initialize database tables."""
+    """Initialize database tables and create initial admin if needed."""
     from app.models import vessel, user, tank, orb_part1, orb_part2, audit_log
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables initialized")
+
+    # Create initial admin user if no users exist
+    db = SessionLocal()
+    try:
+        from app.services.setup_service import create_initial_admin
+        create_initial_admin(db)
+    finally:
+        db.close()

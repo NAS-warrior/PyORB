@@ -7,11 +7,13 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from loguru import logger
 import uvicorn
 
 from app.config import settings
 from app.database import init_db
+from app.api import auth, vessel, users, tanks
 
 app = FastAPI(
     title="PyORB - Oil Record Book System",
@@ -24,7 +26,7 @@ app = FastAPI(
 # CORS - restrict to local network only
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost", "http://127.0.0.1"],
+    allow_origins=["http://localhost", "http://127.0.0.1", "*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -33,6 +35,12 @@ app.add_middleware(
 # Static files & templates
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
+
+# Include API routers
+app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
+app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
+app.include_router(users.router, prefix="/api/users", tags=["Users"])
+app.include_router(tanks.router, prefix="/api/tanks", tags=["Tanks"])
 
 
 @app.on_event("startup")
@@ -49,17 +57,7 @@ async def root(request: Request):
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "version": settings.app_version}
-
-
-# Include routers (Phase 2)
-# from app.api import auth, vessel, tanks, orb, reports, external
-# app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
-# app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
-# app.include_router(tanks.router, prefix="/api/tanks", tags=["Tanks"])
-# app.include_router(orb.router, prefix="/api/orb", tags=["ORB"])
-# app.include_router(reports.router, prefix="/api/reports", tags=["Reports"])
-# app.include_router(external.router, prefix="/api/external", tags=["External"])
+    return {"status": "ok", "version": settings.app_version, "app": settings.app_name}
 
 
 if __name__ == "__main__":

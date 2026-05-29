@@ -7,47 +7,99 @@
     <link rel="stylesheet" href="/static/css/main.css">
 </head>
 <body>
-    <nav class="navbar">
-        <div class="nav-brand">⚓ PyORB</div>
-        <div class="nav-links">
-            <a href="/setup">Setup</a>
-            <a href="/orb/part1">ORB Part I</a>
-            <a href="/orb/part2">ORB Part II</a>
-            <a href="/reports">Reports</a>
-            <a href="/audit">Audit Log</a>
+    <div id="login-screen" class="login-screen">
+        <div class="login-box">
+            <div class="login-logo">⚓</div>
+            <h1>PyORB</h1>
+            <p class="login-subtitle">Oil Record Book System</p>
+            <p class="marpol-badge">MARPOL Annex I Compliant</p>
+            <div id="login-error" class="error-msg" style="display:none"></div>
+            <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="username" placeholder="Enter username" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>Password</label>
+                <input type="password" id="password" placeholder="Enter password" autocomplete="current-password">
+            </div>
+            <button class="btn btn-full" onclick="login()">Login</button>
+            <p class="login-hint">Default: admin / admin — change immediately</p>
         </div>
-        <div class="nav-user">
-            <span id="current-user">Not logged in</span>
-        </div>
-    </nav>
+    </div>
 
-    <main class="container">
-        <h1>Oil Record Book Dashboard</h1>
-        <p class="subtitle">MARPOL Annex I Compliant Record Management</p>
+    <div id="app" style="display:none">
+        <nav class="navbar">
+            <div class="nav-brand">⚓ PyORB</div>
+            <div class="nav-links">
+                <a href="#" onclick="showSection('dashboard')">Dashboard</a>
+                <a href="#" onclick="showSection('vessel')">Vessel</a>
+                <a href="#" onclick="showSection('users')">Users</a>
+                <a href="#" onclick="showSection('tanks')">Tanks</a>
+                <a href="/api/docs" target="_blank">API Docs</a>
+            </div>
+            <div class="nav-user">
+                <span id="nav-username"></span>
+                <span id="nav-role" class="role-badge"></span>
+                <button class="btn btn-sm btn-outline" onclick="logout()">Logout</button>
+            </div>
+        </nav>
 
-        <div class="cards">
-            <div class="card">
-                <h3>ORB Part I</h3>
-                <p>Machinery Space Operations</p>
-                <a href="/orb/part1" class="btn">Open</a>
+        <main class="container">
+            <div id="section-dashboard">
+                <h1>Oil Record Book Dashboard</h1>
+                <p class="subtitle">MARPOL Annex I Compliant Record Management</p>
+                <div id="vessel-summary" class="vessel-banner"></div>
+                <div class="cards">
+                    <div class="card card-blue">
+                        <div class="card-icon">📋</div>
+                        <h3>ORB Part I</h3>
+                        <p>Machinery Space Operations</p>
+                        <small>Codes A — I</small>
+                        <br><a href="#" class="btn mt">Open (Phase 3)</a>
+                    </div>
+                    <div class="card card-green">
+                        <div class="card-icon">🛢️</div>
+                        <h3>ORB Part II</h3>
+                        <p>Cargo / Ballast Operations</p>
+                        <small>Codes A — G</small>
+                        <br><a href="#" class="btn mt">Open (Phase 3)</a>
+                    </div>
+                    <div class="card card-orange">
+                        <div class="card-icon">📊</div>
+                        <h3>Reports</h3>
+                        <p>Export & Statistics</p>
+                        <small>PDF, Excel, CSV</small>
+                        <br><a href="#" class="btn mt">Open (Phase 3)</a>
+                    </div>
+                    <div class="card card-red">
+                        <div class="card-icon">🔍</div>
+                        <h3>Audit Log</h3>
+                        <p>Full Operation History</p>
+                        <small>Complete trail</small>
+                        <br><a href="#" class="btn mt">Open (Phase 3)</a>
+                    </div>
+                </div>
             </div>
-            <div class="card">
-                <h3>ORB Part II</h3>
-                <p>Cargo/Ballast Operations</p>
-                <a href="/orb/part2" class="btn">Open</a>
+
+            <div id="section-vessel" style="display:none">
+                <h1>Vessel Setup</h1>
+                <div id="vessel-form-container"></div>
             </div>
-            <div class="card">
-                <h3>Reports</h3>
-                <p>Export & Statistics</p>
-                <a href="/reports" class="btn">Open</a>
+
+            <div id="section-users" style="display:none">
+                <h1>User Management</h1>
+                <button class="btn mb" onclick="showAddUser()">+ Add User</button>
+                <div id="users-list"></div>
             </div>
-            <div class="card">
-                <h3>Audit Log</h3>
-                <p>Full Operation History</p>
-                <a href="/audit" class="btn">Open</a>
+
+            <div id="section-tanks" style="display:none">
+                <h1>Tank Management</h1>
+                <button class="btn mb" onclick="showAddTank()">+ Add Tank</button>
+                <div id="tanks-list"></div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
+
     <script src="/static/js/main.js"></script>
 </body>
 </html>
