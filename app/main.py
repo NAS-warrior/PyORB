@@ -1,6 +1,5 @@
 """
 PyORB - Oil Record Book System
-Main FastAPI Application Entry Point
 """
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
@@ -9,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, HTMLResponse
 from loguru import logger
 from pathlib import Path
+import traceback
 import uvicorn
 
 from app.config import settings
@@ -32,22 +32,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount static files
-try:
-    app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-    logger.info(f"Static files mounted from {BASE_DIR / 'static'}")
-except Exception as e:
-    logger.error(f"Static files error: {e}")
+app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
+templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
 
-# Templates
-try:
-    templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
-    logger.info(f"Templates loaded from {BASE_DIR / 'templates'}")
-except Exception as e:
-    logger.error(f"Templates error: {e}")
-    templates = None
-
-# API Routers
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
@@ -70,20 +57,17 @@ async def health_check():
     return {"status": "ok", "version": settings.app_version}
 
 
-@app.get("/test")
-async def test():
-    return HTMLResponse("<h1>PyORB is running</h1>")
-
-
 @app.get("/")
 async def root(request: Request):
     try:
-        if templates is None:
-            return HTMLResponse("<h1>Templates not loaded</h1>")
         return templates.TemplateResponse("dashboard.html", {"request": request})
     except Exception as e:
-        logger.error(f"Root route error: {e}")
-        return JSONResponse(status_code=500, content={"detail": str(e), "type": type(e).__name__})
+        tb = traceback.format_exc()
+        logger.error(f"Root route full traceback:\n{tb}")
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e), "type": type(e).__name__, "traceback": tb}
+        )
 
 
 if __name__ == "__main__":
