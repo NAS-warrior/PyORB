@@ -3,10 +3,9 @@ PyORB - Oil Record Book System
 """
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from jinja2 import Environment, FileSystemLoader, BaseLoader
+from fastapi.responses import JSONResponse, HTMLResponse
+from jinja2 import Environment, FileSystemLoader
 from loguru import logger
 from pathlib import Path
 import uvicorn
@@ -34,13 +33,12 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
 
-# Fix for Python 3.14 + Jinja2 cache bug — disable cache
+# Jinja2 environment with cache disabled for Python 3.14 compatibility
 jinja_env = Environment(
     loader=FileSystemLoader(str(BASE_DIR / "templates")),
-    cache_size=0,  # Disable cache entirely
+    cache_size=0,
     auto_reload=True
 )
-templates = Jinja2Templates(env=jinja_env)
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(vessel.router, prefix="/api/vessel", tags=["Vessel"])
@@ -66,7 +64,14 @@ async def health_check():
 
 @app.get("/")
 async def root(request: Request):
-    return templates.TemplateResponse("dashboard.html", {"request": request})
+    try:
+        template = jinja_env.get_template("dashboard.html")
+        html = template.render(request=request)
+        return HTMLResponse(content=html)
+    except Exception as e:
+        import traceback
+        logger.error(traceback.format_exc())
+        return JSONResponse(status_code=500, content={"detail": str(e)})
 
 
 if __name__ == "__main__":
