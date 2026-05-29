@@ -543,3 +543,100 @@ document.addEventListener('keydown',e=>{
   if(e.key==='Escape')closeModal();
 });
 if(token&&currentUser)showApp();
+
+// ── Mode Management ───────────────────────────────────────────────────────────
+let appInfo = null;
+
+async function loadAppInfo() {
+    try {
+        const res = await fetch('/api/appinfo');
+        if (res.ok) {
+            appInfo = await res.json();
+            renderModeBar();
+        }
+    } catch(e) { console.warn('Could not load app info'); }
+}
+
+function renderModeBar() {
+    if (!appInfo) return;
+    const isShip    = appInfo.mode === 'ship';
+    const modeEl    = document.getElementById('topbar-mode-label');
+    const switchBtn = document.getElementById('mode-switch-btn');
+    if (modeEl) {
+        modeEl.textContent = appInfo.mode_label;
+        modeEl.style.background = isShip ? 'rgba(255,255,255,0.15)' : 'rgba(167,139,250,0.35)';
+    }
+    // Only admin can see the switch button
+    if (switchBtn && currentUser?.role === 'admin') {
+        switchBtn.style.display = 'inline-block';
+        switchBtn.textContent   = isShip ? 'Switch to DORB-Control' : 'Switch to DORB-Ship';
+    }
+}
+
+function showModeSwitcher() {
+    if (!appInfo) return;
+    const isShip   = appInfo.mode === 'ship';
+    const target   = isShip ? 'control' : 'ship';
+    const label    = isShip ? 'DORB-Control' : 'DORB-Ship';
+    const prefix   = isShip ? 'CTRL-' : 'SHIP-';
+    const warning  = isShip
+        ? 'Switching to DORB-Control will connect to the fleet management database. This mode is for shore office use.'
+        : 'Switching to DORB-Ship will connect to the vessel onboard database.';
+
+    openModal(`<h2>Switch to ${label}</h2>
+        <div class="alert alert-info" style="margin-bottom:14px">${warning}</div>
+        <div class="form-group">
+            <label>License Key for ${label} *</label>
+            <input id="license-key" placeholder="${prefix}XXXX-XXXX-XXXX-XXXX" style="font-family:monospace">
+        </div>
+        <p style="font-size:.78rem;color:#888;margin-top:6px">
+            Each mode uses its own separate database. Your current data is not affected.
+            The page will reload after switching.
+        </p>
+        <div class="modal-actions">
+            <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmModeSwitch('${target}')">Activate ${label}</button>
+        </div>`);
+}
+
+async function confirmModeSwitch(targetMode) {
+    const key = document.getElementById('license-key').value.trim();
+    if (!key) { showModalAlert('License key is required'); return; }
+
+    const res = await req('POST', '/api/mode/switch', {
+        target_mode: targetMode,
+        license_key: key
+    });
+
+    if (res && res.ok) {
+        const data = await res.json();
+        closeModal();
+        // Show success then reload
+        document.body.insertAdjacentHTML('beforeend', `
+            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);
+                display:flex;align-items:center;justify-content:center;z-index:9999">
+                <div style="background:#fff;border-radius:12px;padding:2rem;text-align:center;max-width:400px">
+                    <div style="font-size:2.5rem;margin-bottom:1rem">&#10003;</div>
+                    <h2 style="color:#1a3a5c;margin-bottom:.5rem">Mode Switched</h2>
+                    <p style="color:#666;margin-bottom:1.5rem">
+                        Now running <strong>${data.mode_label}</strong><br>
+                        Page will reload in 3 seconds...
+                    </p>
+                </div>
+            </div>`);
+        setTimeout(() => window.location.reload(), 3000);
+    } else {
+        const err = await res?.json();
+        showModalAlert(err?.detail || 'Mode switch failed');
+    }
+}
+
+// Override showApp to also load app info and render mode bar
+const _origShowApp = showApp;
+async function showApp() {
+    await _origShowApp.call(this);
+    await loadAppInfo();
+}
+
+// Load app info on page load (before login too — for mode display)
+loadAppInfo();

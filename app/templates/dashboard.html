@@ -27,14 +27,15 @@
 <div id="app" style="display:none">
 
   <!-- TOP BAR -->
-  <div class="topbar">
+  <div class="topbar" id="topbar-bar">
     <div class="topbar-brand">&#9875; PyORB</div>
-    <div class="topbar-vessel" id="topbar-vessel">
+    <div class="topbar-vessel">
       <span id="topbar-vesselname">-</span>
       <span id="topbar-vesselinfo" class="topbar-vesselinfo">Loading...</span>
     </div>
     <div class="topbar-badges">
       <span id="topbar-mode" class="topbar-badge"></span>
+      <span id="topbar-mode-label" class="topbar-badge" style="cursor:default"></span>
     </div>
     <div class="topbar-user">
       <div id="topbar-avatar" class="topbar-avatar">?</div>
@@ -42,6 +43,7 @@
         <span id="topbar-username"></span>
         <span id="topbar-role"></span>
       </div>
+      <button id="mode-switch-btn" class="btn-logout" style="display:none;background:rgba(167,139,250,.3);border-color:rgba(167,139,250,.5)" onclick="showModeSwitcher()">Switch Mode</button>
       <button class="btn-logout" onclick="logout()">Logout</button>
     </div>
   </div>

@@ -41,13 +41,13 @@ sudo systemctl enable postgresql
 ```bash
 sudo -u postgres psql
 
-CREATE DATABASE pyorb;
-CREATE USER pyorb_user WITH PASSWORD 'your-secure-password';
-GRANT CONNECT ON DATABASE pyorb TO pyorb_user;
-\c pyorb
-GRANT ALL PRIVILEGES ON SCHEMA public TO pyorb_user;
+CREATE DATABASE pyorb_ship;
+CREATE USER pyorb_ship_user WITH PASSWORD 'your-secure-password';
+GRANT CONNECT ON DATABASE pyorb_ship TO pyorb_ship_user;
+\c pyorb_ship
+GRANT ALL PRIVILEGES ON SCHEMA public TO pyorb_ship_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE ON TABLES TO pyorb_user;
+  GRANT SELECT, INSERT, UPDATE ON TABLES TO pyorb_ship_user;
 \q
 ```
 
@@ -59,10 +59,10 @@ nano .env
 
 Set these values:
 ```
-APP_MODE=ship
+APP_MODE=ship  # dorb-ship or dorb-control
 APP_LICENSE_KEY=SHIP-IMO-XXXXXXX-XXXX-XXXX
 DB_PASSWORD=your-secure-password
-DATABASE_URL=postgresql://pyorb_user:your-secure-password@localhost:5432/pyorb
+DATABASE_URL=postgresql://pyorb_ship_user:your-secure-password@localhost:5432/pyorb_ship
 SECRET_KEY=generate-a-random-64-char-string
 JWT_SECRET=generate-a-random-64-char-string
 ```
@@ -87,7 +87,7 @@ Default login: `admin` / `admin123` — **change immediately**
 
 ### Step 8 — Run as a System Service
 ```bash
-sudo nano /etc/systemd/system/pyorb.service
+sudo nano /etc/systemd/system/pyorb_ship.service
 ```
 
 ```ini
@@ -109,8 +109,8 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable pyorb
-sudo systemctl start pyorb
+sudo systemctl enable pyorb_ship
+sudo systemctl start pyorb_ship
 ```
 
 ---
@@ -142,10 +142,10 @@ APP_LICENSE_KEY=SUPER-FLEET-COMPANY-XXXX-XXXX
 sudo -u postgres psql
 
 -- Sync-only read user for ship node connections
-CREATE USER pyorb_sync WITH PASSWORD 'sync-password';
-GRANT CONNECT ON DATABASE pyorb TO pyorb_sync;
-GRANT USAGE ON SCHEMA public TO pyorb_sync;
-GRANT SELECT ON ALL TABLES IN SCHEMA public TO pyorb_sync;
+CREATE USER pyorb_ship_sync WITH PASSWORD 'sync-password';
+GRANT CONNECT ON DATABASE pyorb_ship TO pyorb_ship_sync;
+GRANT USAGE ON SCHEMA public TO pyorb_ship_sync;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO pyorb_ship_sync;
 \q
 ```
 
@@ -177,12 +177,12 @@ GRANT SELECT ON ALL TABLES IN SCHEMA public TO pyorb_sync;
 ### Ship Mode Backup
 ```bash
 # Daily encrypted backup
-pg_dump pyorb | gzip | \
-  openssl enc -aes-256-cbc -pbkdf2 -out /backup/pyorb-$(date +%Y%m%d).sql.gz.enc
+pg_dump pyorb_ship | gzip | \
+  openssl enc -aes-256-cbc -pbkdf2 -out /backup/pyorb_ship-$(date +%Y%m%d).sql.gz.enc
 
 # Restore
 openssl enc -d -aes-256-cbc -pbkdf2 \
-  -in /backup/pyorb-20240101.sql.gz.enc | gunzip | psql pyorb
+  -in /backup/pyorb_ship-20240101.sql.gz.enc | gunzip | psql pyorb_ship
 ```
 
 ### Superintendent Mode Backup
